@@ -34,6 +34,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   bool _isSpeaking = false;
   String? _currentAudioPath;
   bool _showCollapsedTitle = false;
+  String? _selectedWord;
 
   @override
   void initState() {
@@ -376,8 +377,21 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                       translation: translation?.trim().isEmpty == true
                           ? null
                           : translation,
+                      selectedWord: _selectedWord,
                       settings: settings,
-                      onWordTap: (word) => _showWordSheet(context, word),
+                      onWordTap: (word) {
+                        setState(() {
+                          _selectedWord = word;
+                        });
+                        _showWordSheet(context, word).whenComplete(() {
+                          if (!mounted) {
+                            return;
+                          }
+                          setState(() {
+                            _selectedWord = null;
+                          });
+                        });
+                      },
                     );
                   },
                 ),
@@ -394,12 +408,14 @@ class _ParagraphView extends StatelessWidget {
   const _ParagraphView({
     required this.text,
     required this.translation,
+    required this.selectedWord,
     required this.settings,
     required this.onWordTap,
   });
 
   final String text;
   final String? translation;
+  final String? selectedWord;
   final ReaderSettings settings;
   final ValueChanged<String> onWordTap;
 
@@ -424,14 +440,25 @@ class _ParagraphView extends StatelessWidget {
               }
 
               final normalized = normalizeWord(token.text);
+              final isSelected =
+                  normalized.isNotEmpty && normalized == selectedWord;
               return InkWell(
                 borderRadius: BorderRadius.circular(3),
                 onTap: normalized.isEmpty ? null : () => onWordTap(normalized),
-                child: Text(
-                  token.text,
-                  style: baseStyle?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w500,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 1),
+                  decoration: isSelected
+                      ? BoxDecoration(
+                          color: const Color(0xFFFDE68A).withValues(alpha: 0.75),
+                          borderRadius: BorderRadius.circular(2),
+                        )
+                      : null,
+                  child: Text(
+                    token.text,
+                    style: baseStyle?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               );
