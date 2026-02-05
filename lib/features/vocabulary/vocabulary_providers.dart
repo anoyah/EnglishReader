@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 
@@ -5,8 +6,20 @@ import '../../data/models/vocabulary_word.dart';
 import '../../data/repositories/dictionary_repository.dart';
 import '../../data/repositories/vocabulary_repository.dart';
 
+final dictionaryDioProvider = Provider<Dio>((ref) => Dio());
+
+final dictionarySourceTypeProvider =
+    Provider<DictionarySourceType>((ref) => DictionarySourceType.auto);
+
 final dictionaryRepositoryProvider = Provider<DictionaryRepository>((ref) {
-  return const DictionaryRepository();
+  return DictionaryRepository(
+    sourceType: ref.watch(dictionarySourceTypeProvider),
+    localSource: const LocalDictionarySource(),
+    apiSource: DictionaryApiSource(ref.watch(dictionaryDioProvider)),
+    localTranslationSource: const LocalTranslationSource(),
+    remoteTranslationSource:
+        MyMemoryTranslationSource(ref.watch(dictionaryDioProvider)),
+  );
 });
 
 final vocabularyRepositoryProvider = Provider<VocabularyRepository>((ref) {
