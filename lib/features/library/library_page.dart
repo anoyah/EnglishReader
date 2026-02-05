@@ -21,16 +21,16 @@ class LibraryPage extends ConsumerWidget {
         title: const Text('Read English'),
         actions: <Widget>[
           IconButton(
-            tooltip: 'Generate Article',
-            onPressed: () => context.push('/generate'),
-            icon: const Icon(Icons.auto_awesome_outlined),
-          ),
-          IconButton(
             tooltip: 'Vocabulary Notebook',
             onPressed: () => context.push('/vocabulary'),
             icon: const Icon(Icons.bookmark_outline),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/generate'),
+        icon: const Icon(Icons.auto_awesome_outlined),
+        label: const Text('Generate'),
       ),
       body: articlesAsync.when(
         data: (articles) {
