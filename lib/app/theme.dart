@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   AppTheme._();
+  static const Color _classicBlue = Color(0xFF1565C0);
 
   static final ThemeData lightTheme = _buildTheme(
-    ColorScheme.fromSeed(seedColor: const Color(0xFF0F766E)),
+    ColorScheme.fromSeed(seedColor: _classicBlue),
   );
 
   static final ThemeData darkTheme = _buildTheme(
     ColorScheme.fromSeed(
-      seedColor: const Color(0xFF0F766E),
+      seedColor: _classicBlue,
       brightness: Brightness.dark,
     ),
   );
