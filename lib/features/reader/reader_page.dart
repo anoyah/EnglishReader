@@ -24,6 +24,8 @@ class ReaderPage extends ConsumerStatefulWidget {
 }
 
 class _ReaderPageState extends ConsumerState<ReaderPage> {
+  static const double _expandedHeaderHeight = 156;
+
   late final ScrollController _scrollController;
   late final AudioPlayer _audioPlayer;
   Timer? _saveDebounce;
@@ -31,6 +33,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   bool _showTranslation = false;
   bool _isSpeaking = false;
   String? _currentAudioPath;
+  bool _showCollapsedTitle = false;
 
   @override
   void initState() {
@@ -71,6 +74,17 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
           .read(progressControllerProvider.notifier)
           .saveProgress(widget.articleId, _scrollController.offset);
     });
+
+    if (!_scrollController.hasClients) {
+      return;
+    }
+    final shouldShowCollapsedTitle =
+        _scrollController.offset > (_expandedHeaderHeight - kToolbarHeight - 8);
+    if (shouldShowCollapsedTitle != _showCollapsedTitle && mounted) {
+      setState(() {
+        _showCollapsedTitle = shouldShowCollapsedTitle;
+      });
+    }
   }
 
   Future<void> _showWordSheet(BuildContext context, String word) async {
@@ -245,20 +259,24 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
             slivers: <Widget>[
               SliverAppBar(
                 pinned: true,
-                expandedHeight: 156,
+                expandedHeight: _expandedHeaderHeight,
                 toolbarHeight: 56,
                 leading: IconButton(
                   tooltip: 'Back',
                   onPressed: context.canPop() ? () => context.pop() : null,
                   icon: const Icon(Icons.arrow_back),
                 ),
-                title: Text(
-                  article.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                title: AnimatedOpacity(
+                  opacity: _showCollapsedTitle ? 1 : 0,
+                  duration: const Duration(milliseconds: 160),
+                  child: Text(
+                    article.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
                 ),
                 actions: <Widget>[
                   PopupMenuButton<String>(
