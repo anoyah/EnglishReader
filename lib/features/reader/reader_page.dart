@@ -1,14 +1,15 @@
 import 'dart:async';
 
-import 'package:flutter_tts/flutter_tts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:just_audio/just_audio.dart';
 
-import '../../data/models/reader_settings.dart';
 import '../../data/models/article.dart';
+import '../../data/models/reader_settings.dart';
 import '../../shared/utils/word_tokenizer.dart';
 import '../library/library_providers.dart';
+import '../tts/tts_providers.dart';
 import '../vocabulary/vocabulary_providers.dart';
 import 'reader_providers.dart';
 import 'reader_settings_sheet.dart';
@@ -24,92 +25,40 @@ class ReaderPage extends ConsumerStatefulWidget {
 
 class _ReaderPageState extends ConsumerState<ReaderPage> {
   late final ScrollController _scrollController;
-  late final FlutterTts _tts;
+  late final AudioPlayer _audioPlayer;
   Timer? _saveDebounce;
   bool _hasRestoredOffset = false;
   bool _showTranslation = false;
   bool _isSpeaking = false;
-  bool _ttsReady = false;
-  Future<void>? _ttsInitializing;
+  String? _currentAudioPath;
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController()..addListener(_onScroll);
-    _tts = FlutterTts();
-    _setupTts();
+    _audioPlayer = AudioPlayer();
+    _audioPlayer.playerStateStream.listen((state) {
+      if (!mounted) {
+        return;
+      }
+      final isNowSpeaking =
+          state.processingState != ProcessingState.completed && state.playing;
+      if (_isSpeaking != isNowSpeaking) {
+        setState(() {
+          _isSpeaking = isNowSpeaking;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     _saveDebounce?.cancel();
-    _tts.stop();
+    _audioPlayer.dispose();
     _scrollController
       ..removeListener(_onScroll)
       ..dispose();
     super.dispose();
-  }
-
-  Future<void> _setupTts() async {
-    if (_ttsReady) {
-      return;
-    }
-    if (_ttsInitializing != null) {
-      await _ttsInitializing;
-      return;
-    }
-
-    final initFuture = _initTts();
-    _ttsInitializing = initFuture;
-    await initFuture;
-    _ttsInitializing = null;
-  }
-
-  Future<void> _initTts() async {
-    await _tts.awaitSpeakCompletion(true);
-    await _tts.setQueueMode(1);
-    await _tts.setLanguage('en-US');
-    await _tts.setSpeechRate(0.45);
-    await _tts.setPitch(1.0);
-    await _tts.getLanguages;
-    await _tts.getVoices;
-
-    _tts.setStartHandler(() {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _isSpeaking = true;
-      });
-    });
-    _tts.setCompletionHandler(() {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _isSpeaking = false;
-      });
-    });
-    _tts.setCancelHandler(() {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _isSpeaking = false;
-      });
-    });
-    _tts.setErrorHandler((message) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _isSpeaking = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('朗读失败: $message')),
-      );
-    });
-    _ttsReady = true;
   }
 
   void _onScroll() {
@@ -160,7 +109,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                       context.pop();
                     },
                     icon: Icon(
-                        isSaved ? Icons.bookmark_remove : Icons.bookmark_add),
+                      isSaved ? Icons.bookmark_remove : Icons.bookmark_add,
+                    ),
                     label: Text(
                       isSaved ? 'Remove from vocabulary' : 'Save to vocabulary',
                     ),
@@ -175,30 +125,53 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   }
 
   Future<void> _toggleSpeak(Article article) async {
-    await _setupTts();
-    if (!_ttsReady) {
-      return;
-    }
-
     if (_isSpeaking) {
-      await _tts.stop();
+      await _audioPlayer.stop();
       return;
     }
 
-    final text = article.paragraphs.join('\n\n');
-    if (text.trim().isEmpty) {
+    final settings = ref.read(cloudTtsSettingsControllerProvider).asData?.value;
+    if (settings == null || settings.apiKey.trim().isEmpty) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请先配置 Cloud TTS API Key')),
+      );
+      context.push('/tts-settings');
       return;
     }
-    final firstResult = await _tts.speak(text);
-    if (!_isSpeakSuccess(firstResult)) {
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      final retryResult = await _tts.speak(text);
-      if (!_isSpeakSuccess(retryResult) && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('TTS engine 未就绪，请稍后重试')),
-        );
-      }
+
+    final text = article.paragraphs.join('\n\n').trim();
+    if (text.isEmpty) {
+      return;
     }
+
+    try {
+      final filePath = await ref.read(cloudTtsServiceProvider).synthesizeToFile(
+            settings: settings,
+            input: text,
+          );
+      _currentAudioPath = filePath;
+      await _audioPlayer.setFilePath(filePath);
+      await _audioPlayer.play();
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('云端朗读失败: $error')),
+      );
+    }
+  }
+
+  Future<void> _replay() async {
+    final path = _currentAudioPath;
+    if (path == null) {
+      return;
+    }
+    await _audioPlayer.setFilePath(path);
+    await _audioPlayer.play();
   }
 
   @override
@@ -250,9 +223,22 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
             IconButton(
               tooltip: _isSpeaking ? 'Stop reading' : 'Read aloud',
               onPressed: () => _toggleSpeak(articleData),
-              icon: Icon(_isSpeaking
-                  ? Icons.stop_circle_outlined
-                  : Icons.volume_up_outlined),
+              icon: Icon(
+                _isSpeaking
+                    ? Icons.stop_circle_outlined
+                    : Icons.volume_up_outlined,
+              ),
+            ),
+          IconButton(
+            tooltip: 'Cloud TTS settings',
+            onPressed: () => context.push('/tts-settings'),
+            icon: const Icon(Icons.record_voice_over_outlined),
+          ),
+          if (_currentAudioPath != null)
+            IconButton(
+              tooltip: 'Replay',
+              onPressed: _replay,
+              icon: const Icon(Icons.replay_outlined),
             ),
           IconButton(
             tooltip: 'Reader settings',
@@ -326,16 +312,6 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       ),
     );
   }
-}
-
-bool _isSpeakSuccess(dynamic result) {
-  if (result is int) {
-    return result == 1;
-  }
-  if (result is bool) {
-    return result;
-  }
-  return false;
 }
 
 class _ParagraphView extends StatelessWidget {

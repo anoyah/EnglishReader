@@ -12,6 +12,7 @@ A lightweight English reading app for Android built with Flutter.
   - Light/Dark mode
 - Tap any English word to open a definition sheet (local mock dictionary).
 - Save/remove words to a vocabulary notebook.
+- Cloud TTS read-aloud for English articles (OpenAI-compatible audio API).
 - Persisted local data:
   - Reading progress per article
   - Vocabulary words
@@ -26,6 +27,7 @@ A lightweight English reading app for Android built with Flutter.
 - Local persistence: `hive` + `shared_preferences`
 - Networking (reserved for future dictionary API): `dio`
 - Text generation: `dio` + API settings (DeepSeek/OpenAI-compatible)
+- Audio playback: `just_audio`
 
 ## Project Structure
 
@@ -72,6 +74,7 @@ Before production release:
   - `generated_articles`
 - Reader visual settings are stored in SharedPreferences.
 - API settings for generation are stored in SharedPreferences (base URL, model, key).
+- Cloud TTS settings are stored in SharedPreferences (base URL, model, voice, key).
 
 ## Article Generation (DeepSeek / OpenAI-compatible)
 
@@ -79,3 +82,9 @@ Before production release:
 - Provide a topic, level, and paragraph count.
 - Expand **API Settings** and paste your API key.
 - The app will save the generated article locally and open it in the reader.
+
+## Cloud TTS Read-Aloud
+
+- Open any article, tap the speaker icon to play or stop read-aloud.
+- Tap the voice settings icon in Reader to configure cloud TTS endpoint/model/voice/key.
+- Default endpoint is OpenAI-compatible: `https://api.openai.com/v1/audio/speech`.
