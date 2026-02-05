@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,23 +24,92 @@ class ReaderPage extends ConsumerStatefulWidget {
 
 class _ReaderPageState extends ConsumerState<ReaderPage> {
   late final ScrollController _scrollController;
+  late final FlutterTts _tts;
   Timer? _saveDebounce;
   bool _hasRestoredOffset = false;
   bool _showTranslation = false;
+  bool _isSpeaking = false;
+  bool _ttsReady = false;
+  Future<void>? _ttsInitializing;
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController()..addListener(_onScroll);
+    _tts = FlutterTts();
+    _setupTts();
   }
 
   @override
   void dispose() {
     _saveDebounce?.cancel();
+    _tts.stop();
     _scrollController
       ..removeListener(_onScroll)
       ..dispose();
     super.dispose();
+  }
+
+  Future<void> _setupTts() async {
+    if (_ttsReady) {
+      return;
+    }
+    if (_ttsInitializing != null) {
+      await _ttsInitializing;
+      return;
+    }
+
+    final initFuture = _initTts();
+    _ttsInitializing = initFuture;
+    await initFuture;
+    _ttsInitializing = null;
+  }
+
+  Future<void> _initTts() async {
+    await _tts.awaitSpeakCompletion(true);
+    await _tts.setQueueMode(1);
+    await _tts.setLanguage('en-US');
+    await _tts.setSpeechRate(0.45);
+    await _tts.setPitch(1.0);
+    await _tts.getLanguages;
+    await _tts.getVoices;
+
+    _tts.setStartHandler(() {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isSpeaking = true;
+      });
+    });
+    _tts.setCompletionHandler(() {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isSpeaking = false;
+      });
+    });
+    _tts.setCancelHandler(() {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isSpeaking = false;
+      });
+    });
+    _tts.setErrorHandler((message) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isSpeaking = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('朗读失败: $message')),
+      );
+    });
+    _ttsReady = true;
   }
 
   void _onScroll() {
@@ -104,6 +174,33 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     );
   }
 
+  Future<void> _toggleSpeak(Article article) async {
+    await _setupTts();
+    if (!_ttsReady) {
+      return;
+    }
+
+    if (_isSpeaking) {
+      await _tts.stop();
+      return;
+    }
+
+    final text = article.paragraphs.join('\n\n');
+    if (text.trim().isEmpty) {
+      return;
+    }
+    final firstResult = await _tts.speak(text);
+    if (!_isSpeakSuccess(firstResult)) {
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      final retryResult = await _tts.speak(text);
+      if (!_isSpeakSuccess(retryResult) && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('TTS engine 未就绪，请稍后重试')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final articleAsync = ref.watch(articleByIdProvider(widget.articleId));
@@ -148,6 +245,14 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
               icon: Icon(
                 _showTranslation ? Icons.translate : Icons.g_translate,
               ),
+            ),
+          if (articleData != null)
+            IconButton(
+              tooltip: _isSpeaking ? 'Stop reading' : 'Read aloud',
+              onPressed: () => _toggleSpeak(articleData),
+              icon: Icon(_isSpeaking
+                  ? Icons.stop_circle_outlined
+                  : Icons.volume_up_outlined),
             ),
           IconButton(
             tooltip: 'Reader settings',
@@ -221,6 +326,16 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       ),
     );
   }
+}
+
+bool _isSpeakSuccess(dynamic result) {
+  if (result is int) {
+    return result == 1;
+  }
+  if (result is bool) {
+    return result;
+  }
+  return false;
 }
 
 class _ParagraphView extends StatelessWidget {
