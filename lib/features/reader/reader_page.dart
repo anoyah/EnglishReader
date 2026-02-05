@@ -237,6 +237,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         return Scaffold(
           floatingActionButton: _hasTranslations(article)
               ? FloatingActionButton(
+                  heroTag: null,
                   tooltip: _showTranslation
                       ? 'Hide translation'
                       : 'Show translation',

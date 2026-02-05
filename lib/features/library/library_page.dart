@@ -29,6 +29,7 @@ class LibraryPage extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () => context.push('/generate'),
         icon: const Icon(Icons.auto_awesome_outlined),
         label: const Text('Generate'),
