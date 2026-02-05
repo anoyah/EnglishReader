@@ -41,31 +41,31 @@ class LibraryPage extends ConsumerWidget {
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: articles.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            separatorBuilder: (context, index) =>
+                const Divider(height: 1, indent: 16, endIndent: 16),
             itemBuilder: (context, index) {
               final article = articles[index];
               final progress = progressMap[article.id];
 
-              return Card(
-                margin: EdgeInsets.zero,
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(16),
-                  title: Text(article.title),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      _buildSubtitle(article, progress?.updatedAt),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/reader/${article.id}'),
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
                 ),
+                title: Text(article.title),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    _buildSubtitle(article, progress?.updatedAt),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/reader/${article.id}'),
               );
             },
           );

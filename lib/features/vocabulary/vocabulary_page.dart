@@ -36,33 +36,35 @@ class VocabularyPage extends ConsumerWidget {
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: words.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            separatorBuilder: (context, index) =>
+                const Divider(height: 1, indent: 16, endIndent: 16),
             itemBuilder: (context, index) {
               final word = words[index];
               final time = DateFormat('yyyy-MM-dd HH:mm').format(word.addedAt);
 
-              return Card(
-                margin: EdgeInsets.zero,
-                child: ListTile(
-                  title: Text(word.word),
-                  subtitle: Text(
-                    '${word.meaning}\nSaved: $time',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                  isThreeLine: true,
-                  trailing: IconButton(
-                    tooltip: 'Remove',
-                    onPressed: () {
-                      ref
-                          .read(vocabularyControllerProvider.notifier)
-                          .removeWord(word.word);
-                    },
-                    icon: const Icon(Icons.delete_outline),
-                  ),
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                title: Text(word.word),
+                subtitle: Text(
+                  '${word.meaning}\nSaved: $time',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                isThreeLine: true,
+                trailing: IconButton(
+                  tooltip: 'Remove',
+                  onPressed: () {
+                    ref
+                        .read(vocabularyControllerProvider.notifier)
+                        .removeWord(word.word);
+                  },
+                  icon: const Icon(Icons.delete_outline),
                 ),
               );
             },
