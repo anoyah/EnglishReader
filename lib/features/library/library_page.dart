@@ -13,6 +13,7 @@ class LibraryPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final articlesAsync = ref.watch(articlesProvider);
+    // 进度单独读取，避免在列表数据加载完成前访问空值。
     final progressMap =
         ref.watch(progressControllerProvider).asData?.value ?? const {};
 

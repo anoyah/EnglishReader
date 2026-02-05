@@ -49,6 +49,7 @@ class _GenerateArticlePageState extends ConsumerState<GenerateArticlePage> {
     final isLoading = generationState.isLoading;
 
     if (!_initialized && settingsAsync.hasValue) {
+      // 首次进入页面时回填已保存的 API 配置，避免用户重复输入。
       final settings = settingsAsync.value ?? GenerationSettings.defaults;
       _baseUrlController.text = settings.baseUrl;
       _modelController.text = settings.model;
@@ -233,6 +234,7 @@ class _GenerateArticlePageState extends ConsumerState<GenerateArticlePage> {
         .save(settings);
 
     try {
+      // AI 随机模式下用约定标记，让服务端 prompt 自行选择主题。
       final article =
           await ref.read(generationControllerProvider.notifier).generate(
                 settings: settings,
@@ -261,6 +263,7 @@ class _GenerateArticlePageState extends ConsumerState<GenerateArticlePage> {
   }
 
   void _applyRandomPreset() {
+    // 仅随机等级和段落数；主题由 AI 自行决定。
     final randomLevel = _levels[_random.nextInt(_levels.length)];
     final randomParagraphCount = 3 + _random.nextInt(6);
 

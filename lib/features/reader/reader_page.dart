@@ -37,6 +37,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   bool _showCollapsedTitle = false;
   String? _selectedTokenId;
   double _currentExpandedHeaderHeight = _expandedHeaderMinHeight;
+  String? _cachedTokenArticleId;
+  final Map<int, List<WordToken>> _tokenCache = <int, List<WordToken>>{};
 
   @override
   void initState() {
@@ -68,6 +70,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   }
 
   void _onScroll() {
+    // 1) 轻量防抖保存阅读进度，避免高频写入本地存储。
     _saveDebounce?.cancel();
     _saveDebounce = Timer(const Duration(milliseconds: 350), () {
       if (!_scrollController.hasClients) {
@@ -78,6 +81,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
           .saveProgress(widget.articleId, _scrollController.offset);
     });
 
+    // 2) 仅在“折叠阈值状态切换”时 setState，减少无效重建。
     if (!_scrollController.hasClients) {
       return;
     }
@@ -105,41 +109,16 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         return Consumer(
           builder: (context, ref, child) {
             final isSaved = ref.watch(isWordSavedProvider(word));
-
-            return FractionallySizedBox(
-              widthFactor: 1,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      word,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(definition),
-                    const SizedBox(height: 20),
-                    FilledButton.icon(
-                      onPressed: () {
-                        ref
-                            .read(vocabularyControllerProvider.notifier)
-                            .toggleWord(word: word, meaning: definition);
-                        context.pop();
-                      },
-                      icon: Icon(
-                        isSaved ? Icons.bookmark_remove : Icons.bookmark_add,
-                      ),
-                      label: Text(
-                        isSaved
-                            ? 'Remove from vocabulary'
-                            : 'Save to vocabulary',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            return _WordSheetContent(
+              word: word,
+              definition: definition,
+              isSaved: isSaved,
+              onToggleSaved: () {
+                ref
+                    .read(vocabularyControllerProvider.notifier)
+                    .toggleWord(word: word, meaning: definition);
+                context.pop();
+              },
             );
           },
         );
@@ -245,6 +224,11 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
           return const Scaffold(
             body: Center(child: Text('Article not found.')),
           );
+        }
+        if (_cachedTokenArticleId != article.id) {
+          // 切换文章时清空分词缓存，避免跨文章误用。
+          _cachedTokenArticleId = article.id;
+          _tokenCache.clear();
         }
 
         final headerSpec = _calculateHeaderSpec(context, article.title);
@@ -402,12 +386,13 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                   itemCount: article.paragraphs.length,
                   itemBuilder: (context, index) {
                     final paragraph = article.paragraphs[index];
+                    final tokens = _tokensFor(index, paragraph);
                     final translation = _showTranslation
                         ? _translationFor(article, index)
                         : null;
                     return _ParagraphView(
                       paragraphIndex: index,
-                      text: paragraph,
+                      tokens: tokens,
                       translation: translation?.trim().isEmpty == true
                           ? null
                           : translation,
@@ -437,6 +422,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     );
   }
 
+  // 根据标题宽度和字号动态估算展开态头部高度，保证长标题尽量完整可见。
   _HeaderSpec _calculateHeaderSpec(BuildContext context, String title) {
     final titleStyle = Theme.of(context).textTheme.titleLarge?.copyWith(
           height: 1.2,
@@ -464,6 +450,17 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       height: expandedHeight.toDouble(),
     );
   }
+
+  // 对段落分词做缓存：同一文章内同一段落只分词一次，减少构建期开销。
+  List<WordToken> _tokensFor(int paragraphIndex, String text) {
+    final cached = _tokenCache[paragraphIndex];
+    if (cached != null) {
+      return cached;
+    }
+    final created = tokenizeParagraph(text);
+    _tokenCache[paragraphIndex] = created;
+    return created;
+  }
 }
 
 class _HeaderSpec {
@@ -473,10 +470,51 @@ class _HeaderSpec {
   final double height;
 }
 
+class _WordSheetContent extends StatelessWidget {
+  const _WordSheetContent({
+    required this.word,
+    required this.definition,
+    required this.isSaved,
+    required this.onToggleSaved,
+  });
+
+  final String word;
+  final String definition;
+  final bool isSaved;
+  final VoidCallback onToggleSaved;
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionallySizedBox(
+      widthFactor: 1,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(word, style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 12),
+            Text(definition),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: onToggleSaved,
+              icon: Icon(isSaved ? Icons.bookmark_remove : Icons.bookmark_add),
+              label: Text(
+                isSaved ? 'Remove from vocabulary' : 'Save to vocabulary',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ParagraphView extends StatelessWidget {
   const _ParagraphView({
     required this.paragraphIndex,
-    required this.text,
+    required this.tokens,
     required this.translation,
     required this.selectedTokenId,
     required this.settings,
@@ -484,7 +522,7 @@ class _ParagraphView extends StatelessWidget {
   });
 
   final int paragraphIndex;
-  final String text;
+  final List<WordToken> tokens;
   final String? translation;
   final String? selectedTokenId;
   final ReaderSettings settings;
@@ -498,8 +536,6 @@ class _ParagraphView extends StatelessWidget {
           height: settings.lineHeight,
           color: articleTextColor,
         );
-
-    final tokens = tokenizeParagraph(text);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
