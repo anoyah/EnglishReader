@@ -98,39 +98,45 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      useSafeArea: true,
       builder: (context) {
         return Consumer(
           builder: (context, ref, child) {
             final isSaved = ref.watch(isWordSavedProvider(word));
 
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    word,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(definition),
-                  const SizedBox(height: 20),
-                  FilledButton.icon(
-                    onPressed: () {
-                      ref
-                          .read(vocabularyControllerProvider.notifier)
-                          .toggleWord(word: word, meaning: definition);
-                      context.pop();
-                    },
-                    icon: Icon(
-                      isSaved ? Icons.bookmark_remove : Icons.bookmark_add,
+            return FractionallySizedBox(
+              widthFactor: 1,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      word,
+                      style: Theme.of(context).textTheme.headlineSmall,
                     ),
-                    label: Text(
-                      isSaved ? 'Remove from vocabulary' : 'Save to vocabulary',
+                    const SizedBox(height: 12),
+                    Text(definition),
+                    const SizedBox(height: 20),
+                    FilledButton.icon(
+                      onPressed: () {
+                        ref
+                            .read(vocabularyControllerProvider.notifier)
+                            .toggleWord(word: word, meaning: definition);
+                        context.pop();
+                      },
+                      icon: Icon(
+                        isSaved ? Icons.bookmark_remove : Icons.bookmark_add,
+                      ),
+                      label: Text(
+                        isSaved
+                            ? 'Remove from vocabulary'
+                            : 'Save to vocabulary',
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
@@ -424,9 +430,11 @@ class _ParagraphView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final articleTextColor = Theme.of(context).colorScheme.onSurface;
     final baseStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
           fontSize: 18 * settings.fontScale,
           height: settings.lineHeight,
+          color: articleTextColor,
         );
 
     final tokens = tokenizeParagraph(text);
@@ -436,41 +444,50 @@ class _ParagraphView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Wrap(
-            children: tokens.asMap().entries.map((entry) {
-              final tokenIndex = entry.key;
-              final token = entry.value;
-              if (!token.isWord) {
-                return Text(token.text, style: baseStyle);
-              }
+          RichText(
+            text: TextSpan(
+              style: baseStyle,
+              children: tokens.asMap().entries.map((entry) {
+                final tokenIndex = entry.key;
+                final token = entry.value;
+                if (!token.isWord) {
+                  return TextSpan(text: token.text);
+                }
 
-              final normalized = normalizeWord(token.text);
-              final tokenId = '$paragraphIndex-$tokenIndex';
-              final isSelected =
-                  normalized.isNotEmpty && tokenId == selectedTokenId;
-              return InkWell(
-                borderRadius: BorderRadius.circular(3),
-                onTap: normalized.isEmpty
-                    ? null
-                    : () => onWordTap(normalized, tokenId),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
-                  decoration: isSelected
-                      ? BoxDecoration(
-                          color: const Color(0xFFFDE68A).withValues(alpha: 0.75),
-                          borderRadius: BorderRadius.circular(6),
-                        )
-                      : null,
-                  child: Text(
-                    token.text,
-                    style: baseStyle?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w500,
+                final normalized = normalizeWord(token.text);
+                final tokenId = '$paragraphIndex-$tokenIndex';
+                final isSelected =
+                    normalized.isNotEmpty && tokenId == selectedTokenId;
+
+                return WidgetSpan(
+                  alignment: PlaceholderAlignment.baseline,
+                  baseline: TextBaseline.alphabetic,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(4),
+                    onTap: normalized.isEmpty
+                        ? null
+                        : () => onWordTap(normalized, tokenId),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      decoration: isSelected
+                          ? BoxDecoration(
+                              color:
+                                  const Color(0xFFFDE68A).withValues(alpha: 0.75),
+                              borderRadius: BorderRadius.circular(5),
+                            )
+                          : null,
+                      child: Text(
+                        token.text,
+                        style: baseStyle?.copyWith(
+                          color: articleTextColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              );
-            }).toList(),
+                );
+              }).toList(),
+            ),
           ),
           if (translation != null) ...<Widget>[
             const SizedBox(height: 8),
