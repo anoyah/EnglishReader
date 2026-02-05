@@ -24,7 +24,8 @@ class ReaderPage extends ConsumerStatefulWidget {
 }
 
 class _ReaderPageState extends ConsumerState<ReaderPage> {
-  static const double _expandedHeaderHeight = 156;
+  static const double _expandedHeaderMinHeight = 156;
+  static const double _expandedHeaderMaxHeight = 300;
 
   late final ScrollController _scrollController;
   late final AudioPlayer _audioPlayer;
@@ -35,6 +36,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   String? _currentAudioPath;
   bool _showCollapsedTitle = false;
   String? _selectedTokenId;
+  double _currentExpandedHeaderHeight = _expandedHeaderMinHeight;
 
   @override
   void initState() {
@@ -79,8 +81,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     if (!_scrollController.hasClients) {
       return;
     }
-    final shouldShowCollapsedTitle =
-        _scrollController.offset > (_expandedHeaderHeight - kToolbarHeight - 8);
+    final shouldShowCollapsedTitle = _scrollController.offset >
+        (_currentExpandedHeaderHeight - kToolbarHeight - 8);
     if (shouldShowCollapsedTitle != _showCollapsedTitle && mounted) {
       setState(() {
         _showCollapsedTitle = shouldShowCollapsedTitle;
@@ -245,6 +247,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
           );
         }
 
+        final headerSpec = _calculateHeaderSpec(context, article.title);
+        _currentExpandedHeaderHeight = headerSpec.height;
+
         return Scaffold(
           floatingActionButton: _hasTranslations(article)
               ? FloatingActionButton(
@@ -266,7 +271,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
             slivers: <Widget>[
               SliverAppBar(
                 pinned: true,
-                expandedHeight: _expandedHeaderHeight,
+                expandedHeight: headerSpec.height,
                 toolbarHeight: 56,
                 leading: IconButton(
                   tooltip: 'Back',
@@ -329,43 +334,65 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                   ),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
-                  background: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 52, 72, 16),
-                      child: Align(
-                        alignment: Alignment.bottomLeft,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              article.title,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge
-                                  ?.copyWith(
-                                    height: 1.2,
-                                    fontWeight: FontWeight.w700,
+                  background: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final showMeta = constraints.maxHeight > 128;
+                      final topPadding =
+                          constraints.maxHeight > 140 ? 52.0 : 16.0;
+                      final titleStyle =
+                          Theme.of(context).textTheme.titleLarge?.copyWith(
+                                height: 1.2,
+                                fontWeight: FontWeight.w700,
+                              );
+                      final fontSize = titleStyle?.fontSize ?? 22;
+                      final lineHeight = fontSize * (titleStyle?.height ?? 1.2);
+                      final contentHeight =
+                          (constraints.maxHeight - topPadding - 16).clamp(
+                        lineHeight,
+                        double.infinity,
+                      );
+                      return SafeArea(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(16, topPadding, 72, 16),
+                          child: Align(
+                            alignment: Alignment.bottomLeft,
+                            child: SizedBox(
+                              height: contentHeight,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Flexible(
+                                    child: Text(
+                                      article.title,
+                                      maxLines: headerSpec.maxLines,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: titleStyle,
+                                    ),
                                   ),
+                                  if (showMeta) ...<Widget>[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'English Reading • CEFR ${article.level}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelLarge
+                                          ?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'English Reading • CEFR ${article.level}',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelLarge
-                                  ?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
-                                  ),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -409,6 +436,41 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       },
     );
   }
+
+  _HeaderSpec _calculateHeaderSpec(BuildContext context, String title) {
+    final titleStyle = Theme.of(context).textTheme.titleLarge?.copyWith(
+          height: 1.2,
+          fontWeight: FontWeight.w700,
+        );
+    final fontSize = titleStyle?.fontSize ?? 22;
+    final lineHeight = fontSize * (titleStyle?.height ?? 1.2);
+    final width = MediaQuery.of(context).size.width;
+    final maxTitleWidth = (width - 16 - 72 - 16).clamp(120.0, width);
+    final painter = TextPainter(
+      text: TextSpan(text: title, style: titleStyle),
+      textDirection: Directionality.of(context),
+      maxLines: null,
+    )..layout(maxWidth: maxTitleWidth);
+    final measuredLines = painter.computeLineMetrics().length.clamp(1, 6);
+    final maxLines = measuredLines;
+    final titleBlockHeight = maxLines * lineHeight;
+    const chromeHeight = 56 + 16 + 16 + 24;
+    final expandedHeight = (chromeHeight + titleBlockHeight).clamp(
+      _expandedHeaderMinHeight,
+      _expandedHeaderMaxHeight,
+    );
+    return _HeaderSpec(
+      maxLines: maxLines,
+      height: expandedHeight.toDouble(),
+    );
+  }
+}
+
+class _HeaderSpec {
+  const _HeaderSpec({required this.maxLines, required this.height});
+
+  final int maxLines;
+  final double height;
 }
 
 class _ParagraphView extends StatelessWidget {
@@ -471,8 +533,8 @@ class _ParagraphView extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 2),
                       decoration: isSelected
                           ? BoxDecoration(
-                              color:
-                                  const Color(0xFFFDE68A).withValues(alpha: 0.75),
+                              color: const Color(0xFFFDE68A)
+                                  .withValues(alpha: 0.75),
                               borderRadius: BorderRadius.circular(5),
                             )
                           : null,
