@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +17,10 @@ class GenerateArticlePage extends ConsumerStatefulWidget {
 }
 
 class _GenerateArticlePageState extends ConsumerState<GenerateArticlePage> {
+  static const List<String> _levels = <String>['A2', 'B1', 'B2', 'C1'];
+  static const String _aiRandomTopicTag = '__AI_RANDOM_TOPIC__';
+
+  final Random _random = Random();
   final TextEditingController _topicController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _apiKeyController = TextEditingController();
@@ -24,6 +30,7 @@ class _GenerateArticlePageState extends ConsumerState<GenerateArticlePage> {
   String _level = 'B1';
   int _paragraphCount = 3;
   bool _initialized = false;
+  bool _useAiRandomTopic = false;
 
   @override
   void dispose() {
@@ -65,11 +72,37 @@ class _GenerateArticlePageState extends ConsumerState<GenerateArticlePage> {
             TextField(
               controller: _topicController,
               textInputAction: TextInputAction.next,
+              onChanged: (value) {
+                if (value.trim().isNotEmpty && _useAiRandomTopic) {
+                  setState(() {
+                    _useAiRandomTopic = false;
+                  });
+                }
+              },
               decoration: const InputDecoration(
                 labelText: 'Topic',
                 hintText: 'e.g. Morning routines, City parks, Work habits',
               ),
             ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: isLoading ? null : _applyRandomPreset,
+                icon: const Icon(Icons.casino_outlined),
+                label: const Text('AI Random Topic'),
+              ),
+            ),
+            if (_useAiRandomTopic)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  'Topic will be decided by AI.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ),
             const SizedBox(height: 12),
             TextField(
               controller: _titleController,
@@ -81,6 +114,7 @@ class _GenerateArticlePageState extends ConsumerState<GenerateArticlePage> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
+              key: ValueKey<String>(_level),
               initialValue: _level,
               decoration: const InputDecoration(labelText: 'CEFR Level'),
               items: const <DropdownMenuItem<String>>[
@@ -173,7 +207,7 @@ class _GenerateArticlePageState extends ConsumerState<GenerateArticlePage> {
 
   Future<void> _handleGenerate() async {
     final topic = _topicController.text.trim();
-    if (topic.isEmpty) {
+    if (topic.isEmpty && !_useAiRandomTopic) {
       _showMessage('Please enter a topic.');
       return;
     }
@@ -202,7 +236,7 @@ class _GenerateArticlePageState extends ConsumerState<GenerateArticlePage> {
       final article =
           await ref.read(generationControllerProvider.notifier).generate(
                 settings: settings,
-                topic: topic,
+                topic: _useAiRandomTopic ? _aiRandomTopicTag : topic,
                 level: _level,
                 paragraphCount: _paragraphCount,
                 titleHint: _titleController.text.trim(),
@@ -224,6 +258,19 @@ class _GenerateArticlePageState extends ConsumerState<GenerateArticlePage> {
       }
       _showMessage('Generation failed: $error');
     }
+  }
+
+  void _applyRandomPreset() {
+    final randomLevel = _levels[_random.nextInt(_levels.length)];
+    final randomParagraphCount = 3 + _random.nextInt(6);
+
+    setState(() {
+      _topicController.clear();
+      _titleController.clear();
+      _level = randomLevel;
+      _paragraphCount = randomParagraphCount;
+      _useAiRandomTopic = true;
+    });
   }
 
   void _showMessage(String message) {

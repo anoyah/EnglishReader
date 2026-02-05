@@ -6,6 +6,8 @@ import '../models/article.dart';
 import '../models/generation_settings.dart';
 
 class ArticleGenerationService {
+  static const String aiRandomTopicTag = '__AI_RANDOM_TOPIC__';
+
   ArticleGenerationService(this._dio);
 
   final Dio _dio;
@@ -86,12 +88,15 @@ class ArticleGenerationService {
     required int paragraphCount,
     String? titleHint,
   }) {
+    final topicLine = topic == aiRandomTopicTag
+        ? 'Topic: choose a practical and interesting topic randomly.'
+        : 'Topic: $topic.';
     final titleLine = titleHint?.trim().isNotEmpty == true
         ? 'Title hint: ${titleHint!.trim()}.'
         : 'Generate a suitable title.';
 
     return 'Write an English article for learners at CEFR level $level. '
-        'Topic: $topic. '
+        '$topicLine '
         'Paragraphs: $paragraphCount. '
         '$titleLine '
         'Return JSON with keys: '
