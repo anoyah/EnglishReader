@@ -214,23 +214,13 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         ),
         title: const Text('Reader'),
         actions: <Widget>[
-          if (articleData != null)
-            IconButton(
-              tooltip: _isSpeaking ? 'Stop reading' : 'Read aloud',
-              onPressed: () => _toggleSpeak(articleData),
-              icon: Icon(
-                _isSpeaking
-                    ? Icons.stop_circle_outlined
-                    : Icons.volume_up_outlined,
-              ),
-            ),
           PopupMenuButton<String>(
             tooltip: 'More actions',
             onSelected: (value) {
-              if (value == 'translation') {
-                setState(() {
-                  _showTranslation = !_showTranslation;
-                });
+              if (value == 'toggle_speak') {
+                if (articleData != null) {
+                  _toggleSpeak(articleData);
+                }
               } else if (value == 'replay') {
                 _replay();
               } else if (value == 'reader_settings') {
@@ -242,12 +232,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
               }
             },
             itemBuilder: (context) => <PopupMenuEntry<String>>[
-              if (_hasTranslations(articleData))
+              if (articleData != null)
                 PopupMenuItem<String>(
-                  value: 'translation',
-                  child: Text(
-                    _showTranslation ? 'Hide translation' : 'Show translation',
-                  ),
+                  value: 'toggle_speak',
+                  child: Text(_isSpeaking ? 'Stop reading' : 'Read aloud'),
                 ),
               if (_currentAudioPath != null)
                 const PopupMenuItem<String>(
@@ -271,6 +259,21 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
           ),
         ],
       ),
+      floatingActionButton: _hasTranslations(articleData)
+          ? FloatingActionButton(
+              tooltip: _showTranslation
+                  ? 'Hide translation'
+                  : 'Show translation',
+              onPressed: () {
+                setState(() {
+                  _showTranslation = !_showTranslation;
+                });
+              },
+              child: Icon(
+                _showTranslation ? Icons.translate : Icons.g_translate,
+              ),
+            )
+          : null,
       body: articleAsync.when(
         data: (article) {
           if (article == null) {
