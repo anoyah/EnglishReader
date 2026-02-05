@@ -185,7 +185,6 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   @override
   Widget build(BuildContext context) {
     final articleAsync = ref.watch(articleByIdProvider(widget.articleId));
-    final articleData = articleAsync.asData?.value;
     final settings =
         ref.watch(readerSettingsControllerProvider).asData?.value ??
             ReaderSettings.defaults;
@@ -205,153 +204,170 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       _hasRestoredOffset = true;
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: 'Back',
-          onPressed: context.canPop() ? () => context.pop() : null,
-          icon: const Icon(Icons.arrow_back),
-        ),
-        title: const Text('Reader'),
-        actions: <Widget>[
-          PopupMenuButton<String>(
-            tooltip: 'More actions',
-            onSelected: (value) {
-              if (value == 'toggle_speak') {
-                if (articleData != null) {
-                  _toggleSpeak(articleData);
-                }
-              } else if (value == 'replay') {
-                _replay();
-              } else if (value == 'reader_settings') {
-                _openReaderSettings();
-              } else if (value == 'tts_settings') {
-                context.push('/tts-settings');
-              } else if (value == 'vocabulary') {
-                context.push('/vocabulary');
-              }
-            },
-            itemBuilder: (context) => <PopupMenuEntry<String>>[
-              if (articleData != null)
-                PopupMenuItem<String>(
-                  value: 'toggle_speak',
-                  child: Text(_isSpeaking ? 'Stop reading' : 'Read aloud'),
-                ),
-              if (_currentAudioPath != null)
-                const PopupMenuItem<String>(
-                  value: 'replay',
-                  child: Text('Replay'),
-                ),
-              const PopupMenuItem<String>(
-                value: 'reader_settings',
-                child: Text('Reader settings'),
-              ),
-              const PopupMenuItem<String>(
-                value: 'tts_settings',
-                child: Text('Cloud TTS settings'),
-              ),
-              const PopupMenuItem<String>(
-                value: 'vocabulary',
-                child: Text('Vocabulary'),
-              ),
-            ],
-            icon: const Icon(Icons.more_vert),
-          ),
-        ],
+    return articleAsync.when(
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
       ),
-      floatingActionButton: _hasTranslations(articleData)
-          ? FloatingActionButton(
-              tooltip: _showTranslation
-                  ? 'Hide translation'
-                  : 'Show translation',
-              onPressed: () {
-                setState(() {
-                  _showTranslation = !_showTranslation;
-                });
-              },
-              child: Icon(
-                _showTranslation ? Icons.translate : Icons.g_translate,
-              ),
-            )
-          : null,
-      body: articleAsync.when(
-        data: (article) {
-          if (article == null) {
-            return const Center(child: Text('Article not found.'));
-          }
-
-          return ListView.builder(
-            controller: _scrollController,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            itemCount: article.paragraphs.length + 1,
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.symmetric(vertical: 12),
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        article.title,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              height: 1.25,
-                            ),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          'CEFR ${article.level}',
-                          style:
-                              Theme.of(context).textTheme.labelMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: Theme.of(context).colorScheme.primary,
-                                  ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              final paragraph = article.paragraphs[index - 1];
-              final translation =
-                  _showTranslation ? _translationFor(article, index - 1) : null;
-              return _ParagraphView(
-                text: paragraph,
-                translation:
-                    translation?.trim().isEmpty == true ? null : translation,
-                settings: settings,
-                onWordTap: (word) => _showWordSheet(context, word),
-              );
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => Center(
+      error: (error, stackTrace) => Scaffold(
+        appBar: AppBar(title: const Text('Reader')),
+        body: Center(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Text('Failed to open article: $error'),
           ),
         ),
       ),
+      data: (article) {
+        if (article == null) {
+          return const Scaffold(
+            body: Center(child: Text('Article not found.')),
+          );
+        }
+
+        return Scaffold(
+          floatingActionButton: _hasTranslations(article)
+              ? FloatingActionButton(
+                  tooltip: _showTranslation
+                      ? 'Hide translation'
+                      : 'Show translation',
+                  onPressed: () {
+                    setState(() {
+                      _showTranslation = !_showTranslation;
+                    });
+                  },
+                  child: Icon(
+                    _showTranslation ? Icons.translate : Icons.g_translate,
+                  ),
+                )
+              : null,
+          body: CustomScrollView(
+            controller: _scrollController,
+            slivers: <Widget>[
+              SliverAppBar(
+                pinned: true,
+                expandedHeight: 156,
+                toolbarHeight: 56,
+                leading: IconButton(
+                  tooltip: 'Back',
+                  onPressed: context.canPop() ? () => context.pop() : null,
+                  icon: const Icon(Icons.arrow_back),
+                ),
+                title: Text(
+                  article.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                actions: <Widget>[
+                  PopupMenuButton<String>(
+                    tooltip: 'More actions',
+                    onSelected: (value) {
+                      if (value == 'toggle_speak') {
+                        _toggleSpeak(article);
+                      } else if (value == 'replay') {
+                        _replay();
+                      } else if (value == 'reader_settings') {
+                        _openReaderSettings();
+                      } else if (value == 'tts_settings') {
+                        context.push('/tts-settings');
+                      } else if (value == 'vocabulary') {
+                        context.push('/vocabulary');
+                      }
+                    },
+                    itemBuilder: (context) => <PopupMenuEntry<String>>[
+                      PopupMenuItem<String>(
+                        value: 'toggle_speak',
+                        child:
+                            Text(_isSpeaking ? 'Stop reading' : 'Read aloud'),
+                      ),
+                      if (_currentAudioPath != null)
+                        const PopupMenuItem<String>(
+                          value: 'replay',
+                          child: Text('Replay'),
+                        ),
+                      const PopupMenuItem<String>(
+                        value: 'reader_settings',
+                        child: Text('Reader settings'),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'tts_settings',
+                        child: Text('Cloud TTS settings'),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'vocabulary',
+                        child: Text('Vocabulary'),
+                      ),
+                    ],
+                    icon: const Icon(Icons.more_vert),
+                  ),
+                ],
+                flexibleSpace: FlexibleSpaceBar(
+                  background: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 52, 72, 16),
+                      child: Align(
+                        alignment: Alignment.bottomLeft,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              article.title,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                    height: 1.2,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'English Reading • CEFR ${article.level}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                sliver: SliverList.builder(
+                  itemCount: article.paragraphs.length,
+                  itemBuilder: (context, index) {
+                    final paragraph = article.paragraphs[index];
+                    final translation = _showTranslation
+                        ? _translationFor(article, index)
+                        : null;
+                    return _ParagraphView(
+                      text: paragraph,
+                      translation: translation?.trim().isEmpty == true
+                          ? null
+                          : translation,
+                      settings: settings,
+                      onWordTap: (word) => _showWordSheet(context, word),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
