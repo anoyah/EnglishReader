@@ -174,6 +174,14 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     await _audioPlayer.play();
   }
 
+  void _openReaderSettings() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => const ReaderSettingsSheet(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final articleAsync = ref.watch(articleByIdProvider(widget.articleId));
@@ -206,19 +214,6 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         ),
         title: const Text('Reader'),
         actions: <Widget>[
-          if (_hasTranslations(articleData))
-            IconButton(
-              tooltip:
-                  _showTranslation ? 'Hide translation' : 'Show translation',
-              onPressed: () {
-                setState(() {
-                  _showTranslation = !_showTranslation;
-                });
-              },
-              icon: Icon(
-                _showTranslation ? Icons.translate : Icons.g_translate,
-              ),
-            ),
           if (articleData != null)
             IconButton(
               tooltip: _isSpeaking ? 'Stop reading' : 'Read aloud',
@@ -229,32 +224,50 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                     : Icons.volume_up_outlined,
               ),
             ),
-          IconButton(
-            tooltip: 'Cloud TTS settings',
-            onPressed: () => context.push('/tts-settings'),
-            icon: const Icon(Icons.record_voice_over_outlined),
-          ),
-          if (_currentAudioPath != null)
-            IconButton(
-              tooltip: 'Replay',
-              onPressed: _replay,
-              icon: const Icon(Icons.replay_outlined),
-            ),
-          IconButton(
-            tooltip: 'Reader settings',
-            onPressed: () {
-              showModalBottomSheet<void>(
-                context: context,
-                showDragHandle: true,
-                builder: (context) => const ReaderSettingsSheet(),
-              );
+          PopupMenuButton<String>(
+            tooltip: 'More actions',
+            onSelected: (value) {
+              if (value == 'translation') {
+                setState(() {
+                  _showTranslation = !_showTranslation;
+                });
+              } else if (value == 'replay') {
+                _replay();
+              } else if (value == 'reader_settings') {
+                _openReaderSettings();
+              } else if (value == 'tts_settings') {
+                context.push('/tts-settings');
+              } else if (value == 'vocabulary') {
+                context.push('/vocabulary');
+              }
             },
-            icon: const Icon(Icons.tune),
-          ),
-          IconButton(
-            tooltip: 'Vocabulary',
-            onPressed: () => context.push('/vocabulary'),
-            icon: const Icon(Icons.bookmarks_outlined),
+            itemBuilder: (context) => <PopupMenuEntry<String>>[
+              if (_hasTranslations(articleData))
+                PopupMenuItem<String>(
+                  value: 'translation',
+                  child: Text(
+                    _showTranslation ? 'Hide translation' : 'Show translation',
+                  ),
+                ),
+              if (_currentAudioPath != null)
+                const PopupMenuItem<String>(
+                  value: 'replay',
+                  child: Text('Replay'),
+                ),
+              const PopupMenuItem<String>(
+                value: 'reader_settings',
+                child: Text('Reader settings'),
+              ),
+              const PopupMenuItem<String>(
+                value: 'tts_settings',
+                child: Text('Cloud TTS settings'),
+              ),
+              const PopupMenuItem<String>(
+                value: 'vocabulary',
+                child: Text('Vocabulary'),
+              ),
+            ],
+            icon: const Icon(Icons.more_vert),
           ),
         ],
       ),
