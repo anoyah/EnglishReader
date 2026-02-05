@@ -34,7 +34,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   bool _isSpeaking = false;
   String? _currentAudioPath;
   bool _showCollapsedTitle = false;
-  String? _selectedWord;
+  String? _selectedTokenId;
 
   @override
   void initState() {
@@ -373,22 +373,23 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                         ? _translationFor(article, index)
                         : null;
                     return _ParagraphView(
+                      paragraphIndex: index,
                       text: paragraph,
                       translation: translation?.trim().isEmpty == true
                           ? null
                           : translation,
-                      selectedWord: _selectedWord,
+                      selectedTokenId: _selectedTokenId,
                       settings: settings,
-                      onWordTap: (word) {
+                      onWordTap: (word, tokenId) {
                         setState(() {
-                          _selectedWord = word;
+                          _selectedTokenId = tokenId;
                         });
                         _showWordSheet(context, word).whenComplete(() {
                           if (!mounted) {
                             return;
                           }
                           setState(() {
-                            _selectedWord = null;
+                            _selectedTokenId = null;
                           });
                         });
                       },
@@ -406,18 +407,20 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
 class _ParagraphView extends StatelessWidget {
   const _ParagraphView({
+    required this.paragraphIndex,
     required this.text,
     required this.translation,
-    required this.selectedWord,
+    required this.selectedTokenId,
     required this.settings,
     required this.onWordTap,
   });
 
+  final int paragraphIndex;
   final String text;
   final String? translation;
-  final String? selectedWord;
+  final String? selectedTokenId;
   final ReaderSettings settings;
-  final ValueChanged<String> onWordTap;
+  final void Function(String word, String tokenId) onWordTap;
 
   @override
   Widget build(BuildContext context) {
@@ -434,23 +437,28 @@ class _ParagraphView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Wrap(
-            children: tokens.map((token) {
+            children: tokens.asMap().entries.map((entry) {
+              final tokenIndex = entry.key;
+              final token = entry.value;
               if (!token.isWord) {
                 return Text(token.text, style: baseStyle);
               }
 
               final normalized = normalizeWord(token.text);
+              final tokenId = '$paragraphIndex-$tokenIndex';
               final isSelected =
-                  normalized.isNotEmpty && normalized == selectedWord;
+                  normalized.isNotEmpty && tokenId == selectedTokenId;
               return InkWell(
                 borderRadius: BorderRadius.circular(3),
-                onTap: normalized.isEmpty ? null : () => onWordTap(normalized),
+                onTap: normalized.isEmpty
+                    ? null
+                    : () => onWordTap(normalized, tokenId),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 1),
+                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
                   decoration: isSelected
                       ? BoxDecoration(
                           color: const Color(0xFFFDE68A).withValues(alpha: 0.75),
-                          borderRadius: BorderRadius.circular(2),
+                          borderRadius: BorderRadius.circular(6),
                         )
                       : null,
                   child: Text(
