@@ -253,7 +253,8 @@ class _GenerateArticlePageState extends ConsumerState<GenerateArticlePage> {
       }
 
       _showMessage('Article generated.');
-      context.push('/reader/${article.id}');
+      // 使用替换跳转：返回时回到书单页，而不是回到生成页。
+      context.pushReplacement('/reader/${article.id}');
     } catch (error) {
       if (!mounted) {
         return;
