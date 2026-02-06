@@ -3,13 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:just_audio/just_audio.dart';
 
 import '../../data/models/article.dart';
 import '../../data/models/reader_settings.dart';
 import '../../shared/utils/word_tokenizer.dart';
 import '../library/library_providers.dart';
-import '../tts/tts_providers.dart';
 import '../vocabulary/vocabulary_providers.dart';
 import 'reader_providers.dart';
 import 'reader_settings_sheet.dart';
@@ -28,12 +26,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   static const double _expandedHeaderMaxHeight = 300;
 
   late final ScrollController _scrollController;
-  late final AudioPlayer _audioPlayer;
   Timer? _saveDebounce;
   bool _hasRestoredOffset = false;
   bool _showTranslation = false;
-  bool _isSpeaking = false;
-  String? _currentAudioPath;
   bool _showCollapsedTitle = false;
   String? _selectedTokenId;
   double _currentExpandedHeaderHeight = _expandedHeaderMinHeight;
@@ -44,25 +39,11 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   void initState() {
     super.initState();
     _scrollController = ScrollController()..addListener(_onScroll);
-    _audioPlayer = AudioPlayer();
-    _audioPlayer.playerStateStream.listen((state) {
-      if (!mounted) {
-        return;
-      }
-      final isNowSpeaking =
-          state.processingState != ProcessingState.completed && state.playing;
-      if (_isSpeaking != isNowSpeaking) {
-        setState(() {
-          _isSpeaking = isNowSpeaking;
-        });
-      }
-    });
   }
 
   @override
   void dispose() {
     _saveDebounce?.cancel();
-    _audioPlayer.dispose();
     _scrollController
       ..removeListener(_onScroll)
       ..dispose();
@@ -124,56 +105,6 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         );
       },
     );
-  }
-
-  Future<void> _toggleSpeak(Article article) async {
-    if (_isSpeaking) {
-      await _audioPlayer.stop();
-      return;
-    }
-
-    final settings = ref.read(cloudTtsSettingsControllerProvider).asData?.value;
-    if (settings == null || settings.apiKey.trim().isEmpty) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先配置 Cloud TTS API Key')),
-      );
-      context.push('/tts-settings');
-      return;
-    }
-
-    final text = article.paragraphs.join('\n\n').trim();
-    if (text.isEmpty) {
-      return;
-    }
-
-    try {
-      final filePath = await ref.read(cloudTtsServiceProvider).synthesizeToFile(
-            settings: settings,
-            input: text,
-          );
-      _currentAudioPath = filePath;
-      await _audioPlayer.setFilePath(filePath);
-      await _audioPlayer.play();
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('云端朗读失败: $error')),
-      );
-    }
-  }
-
-  Future<void> _replay() async {
-    final path = _currentAudioPath;
-    if (path == null) {
-      return;
-    }
-    await _audioPlayer.setFilePath(path);
-    await _audioPlayer.play();
   }
 
   void _openReaderSettings() {
@@ -279,36 +210,16 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                   PopupMenuButton<String>(
                     tooltip: 'More actions',
                     onSelected: (value) {
-                      if (value == 'toggle_speak') {
-                        _toggleSpeak(article);
-                      } else if (value == 'replay') {
-                        _replay();
-                      } else if (value == 'reader_settings') {
+                      if (value == 'reader_settings') {
                         _openReaderSettings();
-                      } else if (value == 'tts_settings') {
-                        context.push('/tts-settings');
                       } else if (value == 'vocabulary') {
                         context.push('/vocabulary');
                       }
                     },
                     itemBuilder: (context) => <PopupMenuEntry<String>>[
-                      PopupMenuItem<String>(
-                        value: 'toggle_speak',
-                        child:
-                            Text(_isSpeaking ? 'Stop reading' : 'Read aloud'),
-                      ),
-                      if (_currentAudioPath != null)
-                        const PopupMenuItem<String>(
-                          value: 'replay',
-                          child: Text('Replay'),
-                        ),
                       const PopupMenuItem<String>(
                         value: 'reader_settings',
                         child: Text('Reader settings'),
-                      ),
-                      const PopupMenuItem<String>(
-                        value: 'tts_settings',
-                        child: Text('Cloud TTS settings'),
                       ),
                       const PopupMenuItem<String>(
                         value: 'vocabulary',

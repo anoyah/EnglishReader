@@ -20,7 +20,7 @@ class ReadEnglishApp extends ConsumerWidget {
     );
 
     return MaterialApp.router(
-      title: 'Read English',
+      title: 'English Reader',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

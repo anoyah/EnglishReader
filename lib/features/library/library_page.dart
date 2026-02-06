@@ -19,7 +19,7 @@ class LibraryPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Read English'),
+        title: const Text('English Reader'),
         actions: <Widget>[
           IconButton(
             tooltip: 'Vocabulary Notebook',
@@ -62,8 +62,8 @@ class LibraryPage extends ConsumerWidget {
                   child: Text(
                     _buildSubtitle(article, progress?.updatedAt),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
                 trailing: const Icon(Icons.chevron_right),
@@ -87,7 +87,7 @@ class LibraryPage extends ConsumerWidget {
     final lines = <String>[];
     lines.add('Level: ${article.level}');
     if (article.isGenerated) {
-      lines.add('Generated');
+      // lines.add('Generated');
     }
     if (updatedAt != null) {
       final formatted = DateFormat('yyyy-MM-dd HH:mm').format(updatedAt);
