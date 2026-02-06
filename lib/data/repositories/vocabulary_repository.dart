@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 
-import '../models/vocabulary_word.dart';
+import 'package:read_english/data/models/vocabulary_word.dart';
 
 const String vocabularyBoxName = 'reader_vocabulary';
 

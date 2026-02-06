@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 
-import '../../data/models/reader_progress.dart';
-import '../../data/models/reader_settings.dart';
-import '../../data/repositories/progress_repository.dart';
-import '../../data/repositories/settings_repository.dart';
+import 'package:read_english/data/models/reader_progress.dart';
+import 'package:read_english/data/models/reader_settings.dart';
+import 'package:read_english/data/repositories/progress_repository.dart';
+import 'package:read_english/data/repositories/settings_repository.dart';
 
 final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
   return const SettingsRepository();

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/models/reader_settings.dart';
+import 'package:read_english/data/models/reader_settings.dart';
 import 'reader_providers.dart';
 
 class ReaderSettingsSheet extends ConsumerWidget {

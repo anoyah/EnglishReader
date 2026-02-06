@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/models/article.dart';
-import '../../data/models/reader_settings.dart';
-import '../../shared/utils/word_tokenizer.dart';
-import '../library/library_providers.dart';
-import '../vocabulary/vocabulary_providers.dart';
+import 'package:read_english/data/models/article.dart';
+import 'package:read_english/data/models/reader_settings.dart';
+import 'package:read_english/shared/utils/word_tokenizer.dart';
+import 'package:read_english/features/library/library_providers.dart';
+import 'package:read_english/features/vocabulary/vocabulary_providers.dart';
 import 'reader_providers.dart';
 import 'reader_settings_sheet.dart';
 

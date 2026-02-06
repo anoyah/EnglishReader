@@ -2,9 +2,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 
-import '../../data/models/article.dart';
-import '../../data/repositories/article_repository.dart';
-import '../../data/repositories/generated_article_repository.dart';
+import 'package:read_english/data/models/article.dart';
+import 'package:read_english/data/repositories/article_repository.dart';
+import 'package:read_english/data/repositories/generated_article_repository.dart';
 
 final articleRepositoryProvider = Provider<ArticleRepository>((ref) {
   return ArticleRepository(rootBundle);

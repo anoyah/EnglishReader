@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../features/library/library_page.dart';
-import '../features/generate/generate_article_page.dart';
-import '../features/reader/reader_page.dart';
-import '../features/vocabulary/vocabulary_page.dart';
+import 'package:read_english/features/library/library_page.dart';
+import 'package:read_english/features/generate/generate_article_page.dart';
+import 'package:read_english/features/reader/reader_page.dart';
+import 'package:read_english/features/vocabulary/vocabulary_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(

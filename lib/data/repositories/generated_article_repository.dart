@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 
-import '../models/article.dart';
+import 'package:read_english/data/models/article.dart';
 
 const String generatedArticlesBoxName = 'generated_articles';
 

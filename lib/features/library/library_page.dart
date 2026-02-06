@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../data/models/article.dart';
-import '../reader/reader_providers.dart';
+import 'package:read_english/data/models/article.dart';
+import 'package:read_english/features/reader/reader_providers.dart';
 import 'library_providers.dart';
 
 class LibraryPage extends ConsumerWidget {

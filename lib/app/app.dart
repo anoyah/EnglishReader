@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../features/reader/reader_providers.dart';
+import 'package:read_english/features/reader/reader_providers.dart';
 import 'router.dart';
 import 'theme.dart';
 

@@ -1,6 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/generation_settings.dart';
+import 'package:read_english/data/models/generation_settings.dart';
 
 class GenerationSettingsRepository {
   const GenerationSettingsRepository();

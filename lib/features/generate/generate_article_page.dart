@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/models/generation_settings.dart';
-import '../library/library_providers.dart';
+import 'package:read_english/data/models/generation_settings.dart';
+import 'package:read_english/features/library/library_providers.dart';
 import 'generate_providers.dart';
 
 class GenerateArticlePage extends ConsumerStatefulWidget {

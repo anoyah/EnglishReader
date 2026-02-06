@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 
-import '../models/reader_progress.dart';
+import 'package:read_english/data/models/reader_progress.dart';
 
 const String progressBoxName = 'reader_progress';
 

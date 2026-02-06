@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
-import '../models/article.dart';
+import 'package:read_english/data/models/article.dart';
 
 class ArticleRepository {
   const ArticleRepository(this._assetBundle);

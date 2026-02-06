@@ -1,6 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/reader_settings.dart';
+import 'package:read_english/data/models/reader_settings.dart';
 
 class SettingsRepository {
   const SettingsRepository();

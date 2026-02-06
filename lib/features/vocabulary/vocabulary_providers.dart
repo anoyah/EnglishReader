@@ -2,9 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 
-import '../../data/models/vocabulary_word.dart';
-import '../../data/repositories/dictionary_repository.dart';
-import '../../data/repositories/vocabulary_repository.dart';
+import 'package:read_english/data/models/vocabulary_word.dart';
+import 'package:read_english/data/repositories/dictionary_repository.dart';
+import 'package:read_english/data/repositories/vocabulary_repository.dart';
 
 final dictionaryDioProvider = Provider<Dio>((ref) => Dio());
 

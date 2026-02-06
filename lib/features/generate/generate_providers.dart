@@ -1,10 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/models/article.dart';
-import '../../data/models/generation_settings.dart';
-import '../../data/repositories/article_generation_service.dart';
-import '../../data/repositories/generation_settings_repository.dart';
+import 'package:read_english/data/models/article.dart';
+import 'package:read_english/data/models/generation_settings.dart';
+import 'package:read_english/data/repositories/article_generation_service.dart';
+import 'package:read_english/data/repositories/generation_settings_repository.dart';
 
 final generationSettingsRepositoryProvider =
     Provider<GenerationSettingsRepository>((ref) {

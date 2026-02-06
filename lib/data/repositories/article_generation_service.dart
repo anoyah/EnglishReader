@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
-import '../models/article.dart';
-import '../models/generation_settings.dart';
+import 'package:read_english/data/models/article.dart';
+import 'package:read_english/data/models/generation_settings.dart';
 
 class ArticleGenerationService {
   static const String aiRandomTopicTag = '__AI_RANDOM_TOPIC__';
