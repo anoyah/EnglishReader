@@ -1,4 +1,6 @@
-final RegExp _tokenPattern = RegExp(r"[A-Za-z']+|[^A-Za-z']+");
+final RegExp _tokenPattern =
+    RegExp(r"[A-Za-z']+(?:-[A-Za-z']+)*|[^A-Za-z']+");
+final RegExp _wordPattern = RegExp(r"^[A-Za-z']+(?:-[A-Za-z']+)*$");
 
 class WordToken {
   const WordToken({required this.text, required this.isWord});
@@ -12,7 +14,7 @@ List<WordToken> tokenizeParagraph(String text) {
       .allMatches(text)
       .map((match) {
         final chunk = match.group(0) ?? '';
-        final isWord = RegExp(r"^[A-Za-z']+$").hasMatch(chunk);
+        final isWord = _wordPattern.hasMatch(chunk);
         return WordToken(text: chunk, isWord: isWord);
       })
       .where((token) => token.text.isNotEmpty)
@@ -20,5 +22,5 @@ List<WordToken> tokenizeParagraph(String text) {
 }
 
 String normalizeWord(String text) {
-  return text.toLowerCase().replaceAll(RegExp(r"[^a-z']"), '');
+  return text.toLowerCase().replaceAll(RegExp(r"[^a-z'-]"), '');
 }

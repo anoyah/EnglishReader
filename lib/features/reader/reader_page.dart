@@ -516,6 +516,20 @@ class _ParagraphView extends StatelessWidget {
     final savedColor = Theme.of(context).colorScheme.primary;
     final selectedColor = const Color(0xFFFDE68A).withValues(alpha: 0.75);
 
+    InlineSpan buildSelectedSpan(String text, BorderRadius borderRadius) {
+      return WidgetSpan(
+        alignment: PlaceholderAlignment.baseline,
+        baseline: TextBaseline.alphabetic,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: selectedColor,
+            borderRadius: borderRadius,
+          ),
+          child: Text(text, style: wordBaseStyle),
+        ),
+      );
+    }
+
     final spans = <InlineSpan>[];
     final painterSpans = <TextSpan>[];
     final hits = <_WordHit>[];
@@ -541,19 +555,33 @@ class _ParagraphView extends StatelessWidget {
       final isSaved = normalized.isNotEmpty && savedWords.contains(normalized);
 
       if (isSelected) {
-        spans.add(
-          WidgetSpan(
-            alignment: PlaceholderAlignment.baseline,
-            baseline: TextBaseline.alphabetic,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: selectedColor,
-                borderRadius: BorderRadius.circular(5),
-              ),
-              child: Text(text, style: wordBaseStyle),
-            ),
-          ),
-        );
+        if (text.contains('-')) {
+          final parts = text.split('-');
+          var segmentIndex = 0;
+          final lastIndex = (parts.length * 2) - 2;
+          for (var i = 0; i < parts.length; i++) {
+            if (parts[i].isNotEmpty) {
+              final radius = segmentIndex == 0
+                  ? const BorderRadius.horizontal(left: Radius.circular(5))
+                  : segmentIndex == lastIndex
+                      ? const BorderRadius.horizontal(
+                          right: Radius.circular(5),
+                        )
+                      : BorderRadius.zero;
+              spans.add(buildSelectedSpan(parts[i], radius));
+            }
+            if (i < parts.length - 1) {
+              segmentIndex += 1;
+              final radius = segmentIndex == lastIndex
+                  ? const BorderRadius.horizontal(right: Radius.circular(5))
+                  : BorderRadius.zero;
+              spans.add(buildSelectedSpan('-', radius));
+            }
+            segmentIndex += 1;
+          }
+        } else {
+          spans.add(buildSelectedSpan(text, BorderRadius.circular(5)));
+        }
         painterSpans.add(TextSpan(text: text, style: wordBaseStyle));
       } else {
         final style = wordBaseStyle.copyWith(
