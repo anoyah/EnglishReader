@@ -500,7 +500,7 @@ class _WordSheetContent extends StatelessWidget {
   }
 }
 
-class _ParagraphView extends StatelessWidget {
+class _ParagraphView extends StatefulWidget {
   const _ParagraphView({
     required this.paragraphIndex,
     required this.tokens,
@@ -520,16 +520,25 @@ class _ParagraphView extends StatelessWidget {
   final void Function(String word, String tokenId) onWordTap;
 
   @override
+  State<_ParagraphView> createState() => _ParagraphViewState();
+}
+
+class _ParagraphViewState extends State<_ParagraphView> {
+  Offset? _pointerDownPosition;
+  DateTime? _pointerDownTime;
+  bool _pointerMoved = false;
+
+  @override
   Widget build(BuildContext context) {
     final articleTextColor = Theme.of(context).colorScheme.onSurface;
     final baseStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
-          fontSize: 18 * settings.fontScale,
-          height: settings.lineHeight,
+          fontSize: 18 * widget.settings.fontScale,
+          height: widget.settings.lineHeight,
           color: articleTextColor,
         ) ??
         TextStyle(
-          fontSize: 18 * settings.fontScale,
-          height: settings.lineHeight,
+          fontSize: 18 * widget.settings.fontScale,
+          height: widget.settings.lineHeight,
           color: articleTextColor,
         );
     final wordBaseStyle = baseStyle.copyWith(fontWeight: FontWeight.w500);
@@ -555,7 +564,7 @@ class _ParagraphView extends StatelessWidget {
     final hits = <_WordHit>[];
     var offset = 0;
 
-    for (final entry in tokens.asMap().entries) {
+    for (final entry in widget.tokens.asMap().entries) {
       final tokenIndex = entry.key;
       final token = entry.value;
       final text = token.text;
@@ -570,9 +579,11 @@ class _ParagraphView extends StatelessWidget {
       }
 
       final normalized = normalizeWord(text);
-      final tokenId = '$paragraphIndex-$tokenIndex';
-      final isSelected = normalized.isNotEmpty && tokenId == selectedTokenId;
-      final isSaved = normalized.isNotEmpty && savedWords.contains(normalized);
+      final tokenId = '${widget.paragraphIndex}-$tokenIndex';
+      final isSelected =
+          normalized.isNotEmpty && tokenId == widget.selectedTokenId;
+      final isSaved =
+          normalized.isNotEmpty && widget.savedWords.contains(normalized);
 
       if (isSelected) {
         if (text.contains('-')) {
@@ -626,28 +637,59 @@ class _ParagraphView extends StatelessWidget {
         children: <Widget>[
           LayoutBuilder(
             builder: (context, constraints) {
-              return GestureDetector(
+              void handleTap(Offset localPosition) {
+                if (hits.isEmpty) {
+                  return;
+                }
+                final painter = TextPainter(
+                  text: TextSpan(style: baseStyle, children: painterSpans),
+                  textDirection: Directionality.of(context),
+                )..layout(maxWidth: constraints.maxWidth);
+                final position = painter.getPositionForOffset(localPosition);
+                final index = position.offset;
+                for (final hit in hits) {
+                  if (hit.contains(index)) {
+                    widget.onWordTap(hit.word, hit.tokenId);
+                    break;
+                  }
+                }
+              }
+
+              return Listener(
                 behavior: HitTestBehavior.translucent,
-                onTapUp: (details) {
-                  if (hits.isEmpty) {
+                onPointerDown: (event) {
+                  _pointerDownPosition = event.localPosition;
+                  _pointerDownTime = DateTime.now();
+                  _pointerMoved = false;
+                },
+                onPointerMove: (event) {
+                  final start = _pointerDownPosition;
+                  if (start == null) {
                     return;
                   }
-                  final painter = TextPainter(
-                    text: TextSpan(style: baseStyle, children: painterSpans),
-                    textDirection: Directionality.of(context),
-                  )..layout(maxWidth: constraints.maxWidth);
-                  final position =
-                      painter.getPositionForOffset(details.localPosition);
-                  final index = position.offset;
-                  for (final hit in hits) {
-                    if (hit.contains(index)) {
-                      onWordTap(hit.word, hit.tokenId);
-                      break;
-                    }
+                  final delta = (event.localPosition - start).distance;
+                  if (delta > 6) {
+                    _pointerMoved = true;
                   }
                 },
-                child: RichText(
-                  text: TextSpan(
+                onPointerUp: (event) {
+                  final downTime = _pointerDownTime;
+                  final moved = _pointerMoved;
+                  _pointerDownPosition = null;
+                  _pointerDownTime = null;
+                  _pointerMoved = false;
+                  if (downTime == null || moved) {
+                    return;
+                  }
+                  final elapsed =
+                      DateTime.now().difference(downTime).inMilliseconds;
+                  if (elapsed > 220) {
+                    return;
+                  }
+                  handleTap(event.localPosition);
+                },
+                child: SelectableText.rich(
+                  TextSpan(
                     style: baseStyle,
                     children: spans,
                   ),
@@ -655,10 +697,10 @@ class _ParagraphView extends StatelessWidget {
               );
             },
           ),
-          if (translation != null) ...<Widget>[
+          if (widget.translation != null) ...<Widget>[
             const SizedBox(height: 8),
             Text(
-              translation!,
+              widget.translation!,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
