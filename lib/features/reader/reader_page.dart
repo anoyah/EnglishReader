@@ -121,6 +121,13 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     final settings =
         ref.watch(readerSettingsControllerProvider).asData?.value ??
             ReaderSettings.defaults;
+    final savedWords = ref
+        .watch(vocabularyControllerProvider)
+        .asData
+        ?.value
+        .map((item) => item.word)
+        .toSet() ??
+        <String>{};
 
     final progress =
         ref.watch(progressControllerProvider).asData?.value[widget.articleId];
@@ -308,6 +315,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                       translation: translation?.trim().isEmpty == true
                           ? null
                           : translation,
+                      savedWords: savedWords,
                       selectedTokenId: _selectedTokenId,
                       settings: settings,
                       onWordTap: (word, tokenId) {
@@ -428,6 +436,7 @@ class _ParagraphView extends StatelessWidget {
     required this.paragraphIndex,
     required this.tokens,
     required this.translation,
+    required this.savedWords,
     required this.selectedTokenId,
     required this.settings,
     required this.onWordTap,
@@ -436,6 +445,7 @@ class _ParagraphView extends StatelessWidget {
   final int paragraphIndex;
   final List<WordToken> tokens;
   final String? translation;
+  final Set<String> savedWords;
   final String? selectedTokenId;
   final ReaderSettings settings;
   final void Function(String word, String tokenId) onWordTap;
@@ -468,6 +478,8 @@ class _ParagraphView extends StatelessWidget {
                 final tokenId = '$paragraphIndex-$tokenIndex';
                 final isSelected =
                     normalized.isNotEmpty && tokenId == selectedTokenId;
+                final isSaved =
+                    normalized.isNotEmpty && savedWords.contains(normalized);
 
                 return WidgetSpan(
                   alignment: PlaceholderAlignment.baseline,
@@ -491,6 +503,13 @@ class _ParagraphView extends StatelessWidget {
                         style: baseStyle?.copyWith(
                           color: articleTextColor,
                           fontWeight: FontWeight.w500,
+                          decoration: isSaved && !isSelected
+                              ? TextDecoration.underline
+                              : null,
+                          decorationColor: isSaved && !isSelected
+                              ? Theme.of(context).colorScheme.primary
+                              : null,
+                          decorationThickness: isSaved && !isSelected ? 2 : null,
                         ),
                       ),
                     ),
