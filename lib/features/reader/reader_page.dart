@@ -456,24 +456,44 @@ class _WordSheetContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return FractionallySizedBox(
       widthFactor: 1,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(word, style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 12),
-            Text(definition),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: onToggleSaved,
-              icon: Icon(isSaved ? Icons.bookmark_remove : Icons.bookmark_add),
-              label: Text(
-                isSaved ? 'Remove from vocabulary' : 'Save to vocabulary',
-              ),
-            ),
-          ],
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: constraints.maxHeight,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(word, style: Theme.of(context).textTheme.headlineSmall),
+                    const SizedBox(height: 12),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Text(definition),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    FilledButton.icon(
+                      onPressed: onToggleSaved,
+                      icon: Icon(
+                        isSaved ? Icons.bookmark_remove : Icons.bookmark_add,
+                      ),
+                      label: Text(
+                        isSaved
+                            ? 'Remove from vocabulary'
+                            : 'Save to vocabulary',
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
