@@ -34,6 +34,11 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   double _currentExpandedHeaderHeight = _expandedHeaderMinHeight;
   String? _cachedTokenArticleId;
   final Map<int, List<WordToken>> _tokenCache = <int, List<WordToken>>{};
+  _HeaderSpec? _cachedHeaderSpec;
+  String? _cachedHeaderTitle;
+  double? _cachedHeaderWidth;
+  double? _cachedHeaderFontSize;
+  double? _cachedHeaderLineHeight;
 
   @override
   void initState() {
@@ -121,13 +126,6 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     final settings =
         ref.watch(readerSettingsControllerProvider).asData?.value ??
             ReaderSettings.defaults;
-    final savedWords = ref
-        .watch(vocabularyControllerProvider)
-        .asData
-        ?.value
-        .map((item) => item.word)
-        .toSet() ??
-        <String>{};
 
     final progress =
         ref.watch(progressControllerProvider).asData?.value[widget.articleId];
@@ -169,7 +167,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
           _tokenCache.clear();
         }
 
-        final headerSpec = _calculateHeaderSpec(context, article.title);
+        final headerSpec = _resolveHeaderSpec(context, article.title);
         _currentExpandedHeaderHeight = headerSpec.height;
 
         return Scaffold(
@@ -309,27 +307,34 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                     final translation = _showTranslation
                         ? _translationFor(article, index)
                         : null;
-                    return _ParagraphView(
-                      paragraphIndex: index,
-                      tokens: tokens,
-                      translation: translation?.trim().isEmpty == true
-                          ? null
-                          : translation,
-                      savedWords: savedWords,
-                      selectedTokenId: _selectedTokenId,
-                      settings: settings,
-                      onWordTap: (word, tokenId) {
-                        setState(() {
-                          _selectedTokenId = tokenId;
-                        });
-                        _showWordSheet(context, word).whenComplete(() {
-                          if (!mounted) {
-                            return;
-                          }
-                          setState(() {
-                            _selectedTokenId = null;
-                          });
-                        });
+                    return Consumer(
+                      builder: (context, ref, child) {
+                        final savedWords = ref.watch(savedWordSetProvider);
+                        return RepaintBoundary(
+                          child: _ParagraphView(
+                            paragraphIndex: index,
+                            tokens: tokens,
+                            translation: translation?.trim().isEmpty == true
+                                ? null
+                                : translation,
+                            savedWords: savedWords,
+                            selectedTokenId: _selectedTokenId,
+                            settings: settings,
+                            onWordTap: (word, tokenId) {
+                              setState(() {
+                                _selectedTokenId = tokenId;
+                              });
+                              _showWordSheet(context, word).whenComplete(() {
+                                if (!mounted) {
+                                  return;
+                                }
+                                setState(() {
+                                  _selectedTokenId = null;
+                                });
+                              });
+                            },
+                          ),
+                        );
                       },
                     );
                   },
@@ -342,8 +347,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     );
   }
 
-  // 根据标题宽度和字号动态估算展开态头部高度，保证长标题尽量完整可见。
-  _HeaderSpec _calculateHeaderSpec(BuildContext context, String title) {
+  _HeaderSpec _resolveHeaderSpec(BuildContext context, String title) {
     final titleStyle = Theme.of(context).textTheme.titleLarge?.copyWith(
           height: 1.2,
           fontWeight: FontWeight.w700,
@@ -351,6 +355,40 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     final fontSize = titleStyle?.fontSize ?? 22;
     final lineHeight = fontSize * (titleStyle?.height ?? 1.2);
     final width = MediaQuery.of(context).size.width;
+
+    if (_cachedHeaderSpec != null &&
+        _cachedHeaderTitle == title &&
+        _cachedHeaderWidth == width &&
+        _cachedHeaderFontSize == fontSize &&
+        _cachedHeaderLineHeight == lineHeight) {
+      return _cachedHeaderSpec!;
+    }
+
+    final spec = _calculateHeaderSpec(
+      context: context,
+      title: title,
+      titleStyle: titleStyle,
+      fontSize: fontSize,
+      lineHeight: lineHeight,
+      width: width,
+    );
+    _cachedHeaderSpec = spec;
+    _cachedHeaderTitle = title;
+    _cachedHeaderWidth = width;
+    _cachedHeaderFontSize = fontSize;
+    _cachedHeaderLineHeight = lineHeight;
+    return spec;
+  }
+
+  // 根据标题宽度和字号动态估算展开态头部高度，保证长标题尽量完整可见。
+  _HeaderSpec _calculateHeaderSpec({
+    required BuildContext context,
+    required String title,
+    required TextStyle? titleStyle,
+    required double fontSize,
+    required double lineHeight,
+    required double width,
+  }) {
     final maxTitleWidth = (width - 16 - 72 - 16).clamp(120.0, width);
     final painter = TextPainter(
       text: TextSpan(text: title, style: titleStyle),
@@ -388,6 +426,17 @@ class _HeaderSpec {
 
   final int maxLines;
   final double height;
+}
+
+class _WordHit {
+  const _WordHit(this.start, this.end, this.word, this.tokenId);
+
+  final int start;
+  final int end;
+  final String word;
+  final String tokenId;
+
+  bool contains(int index) => index >= start && index < end;
 }
 
 class _WordSheetContent extends StatelessWidget {
@@ -457,66 +506,106 @@ class _ParagraphView extends StatelessWidget {
           fontSize: 18 * settings.fontScale,
           height: settings.lineHeight,
           color: articleTextColor,
+        ) ??
+        TextStyle(
+          fontSize: 18 * settings.fontScale,
+          height: settings.lineHeight,
+          color: articleTextColor,
         );
+    final wordBaseStyle = baseStyle.copyWith(fontWeight: FontWeight.w500);
+    final savedColor = Theme.of(context).colorScheme.primary;
+    final selectedColor = const Color(0xFFFDE68A).withValues(alpha: 0.75);
+
+    final spans = <InlineSpan>[];
+    final painterSpans = <TextSpan>[];
+    final hits = <_WordHit>[];
+    var offset = 0;
+
+    for (final entry in tokens.asMap().entries) {
+      final tokenIndex = entry.key;
+      final token = entry.value;
+      final text = token.text;
+      final start = offset;
+      final end = start + text.length;
+
+      if (!token.isWord) {
+        spans.add(TextSpan(text: text));
+        painterSpans.add(TextSpan(text: text));
+        offset = end;
+        continue;
+      }
+
+      final normalized = normalizeWord(text);
+      final tokenId = '$paragraphIndex-$tokenIndex';
+      final isSelected = normalized.isNotEmpty && tokenId == selectedTokenId;
+      final isSaved = normalized.isNotEmpty && savedWords.contains(normalized);
+
+      if (isSelected) {
+        spans.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: selectedColor,
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: Text(text, style: wordBaseStyle),
+            ),
+          ),
+        );
+        painterSpans.add(TextSpan(text: text, style: wordBaseStyle));
+      } else {
+        final style = wordBaseStyle.copyWith(
+          decoration: isSaved ? TextDecoration.underline : null,
+          decorationColor: isSaved ? savedColor : null,
+          decorationThickness: isSaved ? 2 : null,
+        );
+        spans.add(TextSpan(text: text, style: style));
+        painterSpans.add(TextSpan(text: text, style: style));
+      }
+
+      if (normalized.isNotEmpty) {
+        hits.add(_WordHit(start, end, normalized, tokenId));
+      }
+      offset = end;
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          RichText(
-            text: TextSpan(
-              style: baseStyle,
-              children: tokens.asMap().entries.map((entry) {
-                final tokenIndex = entry.key;
-                final token = entry.value;
-                if (!token.isWord) {
-                  return TextSpan(text: token.text);
-                }
-
-                final normalized = normalizeWord(token.text);
-                final tokenId = '$paragraphIndex-$tokenIndex';
-                final isSelected =
-                    normalized.isNotEmpty && tokenId == selectedTokenId;
-                final isSaved =
-                    normalized.isNotEmpty && savedWords.contains(normalized);
-
-                return WidgetSpan(
-                  alignment: PlaceholderAlignment.baseline,
-                  baseline: TextBaseline.alphabetic,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(4),
-                    onTap: normalized.isEmpty
-                        ? null
-                        : () => onWordTap(normalized, tokenId),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      decoration: isSelected
-                          ? BoxDecoration(
-                              color: const Color(0xFFFDE68A)
-                                  .withValues(alpha: 0.75),
-                              borderRadius: BorderRadius.circular(5),
-                            )
-                          : null,
-                      child: Text(
-                        token.text,
-                        style: baseStyle?.copyWith(
-                          color: articleTextColor,
-                          fontWeight: FontWeight.w500,
-                          decoration: isSaved && !isSelected
-                              ? TextDecoration.underline
-                              : null,
-                          decorationColor: isSaved && !isSelected
-                              ? Theme.of(context).colorScheme.primary
-                              : null,
-                          decorationThickness: isSaved && !isSelected ? 2 : null,
-                        ),
-                      ),
-                    ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTapUp: (details) {
+                  if (hits.isEmpty) {
+                    return;
+                  }
+                  final painter = TextPainter(
+                    text: TextSpan(style: baseStyle, children: painterSpans),
+                    textDirection: Directionality.of(context),
+                  )..layout(maxWidth: constraints.maxWidth);
+                  final position =
+                      painter.getPositionForOffset(details.localPosition);
+                  final index = position.offset;
+                  for (final hit in hits) {
+                    if (hit.contains(index)) {
+                      onWordTap(hit.word, hit.tokenId);
+                      break;
+                    }
+                  }
+                },
+                child: RichText(
+                  text: TextSpan(
+                    style: baseStyle,
+                    children: spans,
                   ),
-                );
-              }).toList(),
-            ),
+                ),
+              );
+            },
           ),
           if (translation != null) ...<Widget>[
             const SizedBox(height: 8),

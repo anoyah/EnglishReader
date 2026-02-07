@@ -60,9 +60,14 @@ final vocabularyControllerProvider =
   VocabularyController.new,
 );
 
+final savedWordSetProvider = Provider<Set<String>>((ref) {
+  final words =
+      ref.watch(vocabularyControllerProvider).asData?.value ??
+          const <VocabularyWord>[];
+  return words.map((item) => item.word).toSet();
+});
+
 final isWordSavedProvider = Provider.family<bool, String>((ref, word) {
   final normalized = word.toLowerCase();
-  final words = ref.watch(vocabularyControllerProvider).asData?.value ??
-      const <VocabularyWord>[];
-  return words.any((item) => item.word == normalized);
+  return ref.watch(savedWordSetProvider).contains(normalized);
 });
