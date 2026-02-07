@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -13,63 +13,32 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/',
         pageBuilder: (context, state) =>
-            _buildPage(state, const LibraryPage()),
+            CupertinoPage<void>(key: state.pageKey, child: const LibraryPage()),
       ),
       GoRoute(
         path: '/reader/:articleId',
         pageBuilder: (context, state) {
           final articleId = state.pathParameters['articleId'] ?? '';
-          return _buildPage(state, ReaderPage(articleId: articleId));
+          return CupertinoPage<void>(
+            key: state.pageKey,
+            child: ReaderPage(articleId: articleId),
+          );
         },
       ),
       GoRoute(
         path: '/vocabulary',
-        pageBuilder: (context, state) =>
-            _buildPage(state, const VocabularyPage()),
+        pageBuilder: (context, state) => CupertinoPage<void>(
+          key: state.pageKey,
+          child: const VocabularyPage(),
+        ),
       ),
       GoRoute(
         path: '/generate',
-        pageBuilder: (context, state) =>
-            _buildPage(state, const GenerateArticlePage()),
+        pageBuilder: (context, state) => CupertinoPage<void>(
+          key: state.pageKey,
+          child: const GenerateArticlePage(),
+        ),
       ),
     ],
   );
 });
-
-Page<void> _buildPage(GoRouterState state, Widget child) {
-  return CustomTransitionPage<void>(
-    key: state.pageKey,
-    child: child,
-    transitionDuration: const Duration(milliseconds: 240),
-    reverseTransitionDuration: const Duration(milliseconds: 220),
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final inCurve = CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOutCubic,
-        reverseCurve: Curves.easeInCubic,
-      );
-      final outCurve = CurvedAnimation(
-        parent: secondaryAnimation,
-        curve: Curves.easeOutCubic,
-        reverseCurve: Curves.easeInCubic,
-      );
-
-      final enter = Tween<Offset>(
-        begin: const Offset(1, 0),
-        end: Offset.zero,
-      ).animate(inCurve);
-      final exit = Tween<Offset>(
-        begin: Offset.zero,
-        end: const Offset(-0.2, 0),
-      ).animate(outCurve);
-
-      return SlideTransition(
-        position: enter,
-        child: SlideTransition(
-          position: exit,
-          child: child,
-        ),
-      );
-    },
-  );
-}
