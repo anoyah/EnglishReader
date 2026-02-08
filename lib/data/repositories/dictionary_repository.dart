@@ -127,10 +127,7 @@ class MyMemoryTranslationSource implements TranslationSource {
     try {
       final response = await _dio.get<dynamic>(
         'https://api.mymemory.translated.net/get',
-        queryParameters: <String, dynamic>{
-          'q': query,
-          'langpair': 'en|zh-CN',
-        },
+        queryParameters: <String, dynamic>{'q': query, 'langpair': 'en|zh-CN'},
       );
       if (response.data is! Map<String, dynamic>) {
         return null;
@@ -158,10 +155,10 @@ class DictionaryRepository {
     required DictionarySource apiSource,
     required TranslationSource localTranslationSource,
     required TranslationSource remoteTranslationSource,
-  })  : _localSource = localSource,
-        _apiSource = apiSource,
-        _localTranslationSource = localTranslationSource,
-        _remoteTranslationSource = remoteTranslationSource;
+  }) : _localSource = localSource,
+       _apiSource = apiSource,
+       _localTranslationSource = localTranslationSource,
+       _remoteTranslationSource = remoteTranslationSource;
 
   final DictionarySourceType sourceType;
   final DictionarySource _localSource;
@@ -183,7 +180,8 @@ class DictionaryRepository {
     String? result;
     switch (sourceType) {
       case DictionarySourceType.auto:
-        result = await _apiSource.lookup(normalized) ??
+        result =
+            await _apiSource.lookup(normalized) ??
             await _localSource.lookup(normalized);
         break;
       case DictionarySourceType.localOnly:
@@ -207,9 +205,10 @@ class DictionaryRepository {
     required String? englishDefinition,
   }) async {
     if (englishDefinition == null || englishDefinition.isEmpty) {
-      return '中文：暂无释义\n\nEnglish: No definition found for "$normalizedWord".';
+      return '暂无释义\n\nNo definition found for "$normalizedWord".';
     }
-    final chinese = await _remoteTranslationSource.translateToChinese(
+    final chinese =
+        await _remoteTranslationSource.translateToChinese(
           normalizedWord: normalizedWord,
           englishDefinition: englishDefinition,
         ) ??
@@ -218,8 +217,8 @@ class DictionaryRepository {
           englishDefinition: englishDefinition,
         );
     if (chinese == null || chinese.isEmpty) {
-      return '中文：暂无释义\n\nEnglish: $englishDefinition';
+      return '暂无释义\n\n$englishDefinition';
     }
-    return '中文：$chinese\n\nEnglish: $englishDefinition';
+    return '$chinese\n\n$englishDefinition';
   }
 }

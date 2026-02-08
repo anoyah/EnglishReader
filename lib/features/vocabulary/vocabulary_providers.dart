@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 
 import 'package:read_english/data/models/vocabulary_word.dart';
+import 'package:read_english/data/models/privacy_settings.dart';
 import 'package:read_english/data/repositories/dictionary_repository.dart';
 import 'package:read_english/data/repositories/vocabulary_repository.dart';
+import 'package:read_english/features/privacy/privacy_providers.dart';
 
 final dictionaryDioProvider = Provider<Dio>((ref) => Dio());
 
@@ -12,13 +14,21 @@ final dictionarySourceTypeProvider =
     Provider<DictionarySourceType>((ref) => DictionarySourceType.auto);
 
 final dictionaryRepositoryProvider = Provider<DictionaryRepository>((ref) {
+  final privacy = ref.watch(privacySettingsControllerProvider).asData?.value;
+  final allowOnlineTranslation =
+      privacy?.allowOnlineTranslation ??
+          PrivacySettings.defaults.allowOnlineTranslation;
+  final sourceType = allowOnlineTranslation
+      ? ref.watch(dictionarySourceTypeProvider)
+      : DictionarySourceType.localOnly;
   return DictionaryRepository(
-    sourceType: ref.watch(dictionarySourceTypeProvider),
+    sourceType: sourceType,
     localSource: const LocalDictionarySource(),
     apiSource: DictionaryApiSource(ref.watch(dictionaryDioProvider)),
     localTranslationSource: const LocalTranslationSource(),
-    remoteTranslationSource:
-        MyMemoryTranslationSource(ref.watch(dictionaryDioProvider)),
+    remoteTranslationSource: allowOnlineTranslation
+        ? MyMemoryTranslationSource(ref.watch(dictionaryDioProvider))
+        : const LocalTranslationSource(),
   );
 });
 

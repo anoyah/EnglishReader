@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:read_english/data/models/reader_settings.dart';
+import 'package:read_english/data/models/privacy_settings.dart';
+import 'package:read_english/features/privacy/privacy_providers.dart';
 import 'reader_providers.dart';
 
 class ReaderSettingsSheet extends ConsumerWidget {
@@ -12,6 +14,9 @@ class ReaderSettingsSheet extends ConsumerWidget {
     final settings =
         ref.watch(readerSettingsControllerProvider).asData?.value ??
             ReaderSettings.defaults;
+    final privacy =
+        ref.watch(privacySettingsControllerProvider).asData?.value ??
+            PrivacySettings.defaults;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -57,6 +62,20 @@ class ReaderSettingsSheet extends ConsumerWidget {
                     .setDarkMode(value);
               },
               title: const Text('Dark mode'),
+            ),
+            const Divider(height: 24),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: privacy.allowOnlineTranslation,
+              onChanged: (value) {
+                ref
+                    .read(privacySettingsControllerProvider.notifier)
+                    .setAllowOnlineTranslation(value);
+              },
+              title: const Text('Allow online translation'),
+              subtitle: const Text(
+                'Word lookups may be sent to a third-party translation service.',
+              ),
             ),
           ],
         ),
