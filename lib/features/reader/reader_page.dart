@@ -29,6 +29,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   Timer? _saveDebounce;
   bool _hasRestoredOffset = false;
   bool _showTranslation = false;
+  bool _hasInitializedTranslationPreference = false;
   bool _showCollapsedTitle = false;
   String? _selectedTokenId;
   double _currentExpandedHeaderHeight = _expandedHeaderMinHeight;
@@ -165,13 +166,21 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
           // 切换文章时清空分词缓存，避免跨文章误用。
           _cachedTokenArticleId = article.id;
           _tokenCache.clear();
+          _hasInitializedTranslationPreference = false;
+        }
+
+        final allowTranslation = _hasTranslations(article);
+        if (!_hasInitializedTranslationPreference) {
+          _hasInitializedTranslationPreference = true;
+          _showTranslation =
+              settings.showTranslationByDefault && allowTranslation;
         }
 
         final headerSpec = _resolveHeaderSpec(context, article.title);
         _currentExpandedHeaderHeight = headerSpec.height;
 
         return Scaffold(
-          floatingActionButton: _hasTranslations(article)
+          floatingActionButton: allowTranslation
               ? FloatingActionButton(
                   heroTag: null,
                   tooltip: _showTranslation
@@ -304,7 +313,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                   itemBuilder: (context, index) {
                     final paragraph = article.paragraphs[index];
                     final tokens = _tokensFor(index, paragraph);
-                    final translation = _showTranslation
+                    final translation = _showTranslation && allowTranslation
                         ? _translationFor(article, index)
                         : null;
                     return Consumer(

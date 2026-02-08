@@ -48,6 +48,18 @@ class ReaderSettingsSheet extends ConsumerWidget {
                     .setLineHeight(value);
               },
             ),
+            const Divider(height: 24),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: settings.showTranslationByDefault,
+              onChanged: (value) {
+                ref
+                    .read(readerSettingsControllerProvider.notifier)
+                    .setShowTranslationByDefault(value);
+              },
+              title: const Text('默认显示翻译'),
+              subtitle: const Text('进入文章后默认展示译文'),
+            ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: settings.isDarkMode,

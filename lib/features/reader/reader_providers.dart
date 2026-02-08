@@ -33,6 +33,10 @@ class ReaderSettingsController extends AsyncNotifier<ReaderSettings> {
     await _save(state.asData?.value.copyWith(isDarkMode: isDark));
   }
 
+  Future<void> setShowTranslationByDefault(bool value) async {
+    await _save(state.asData?.value.copyWith(showTranslationByDefault: value));
+  }
+
   Future<void> _save(ReaderSettings? next) async {
     final current = next ?? ReaderSettings.defaults;
     state = AsyncData(current);
