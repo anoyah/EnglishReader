@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -536,6 +537,7 @@ class _ParagraphViewState extends State<_ParagraphView> {
   Offset? _pointerDownPosition;
   DateTime? _pointerDownTime;
   bool _pointerMoved = false;
+  final GlobalKey _textKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -650,16 +652,56 @@ class _ParagraphViewState extends State<_ParagraphView> {
                 if (hits.isEmpty) {
                   return;
                 }
-                final painter = TextPainter(
-                  text: TextSpan(style: baseStyle, children: painterSpans),
-                  textDirection: Directionality.of(context),
-                )..layout(maxWidth: constraints.maxWidth);
-                final position = painter.getPositionForOffset(localPosition);
-                final index = position.offset;
+                final renderObject =
+                    _textKey.currentContext?.findRenderObject();
+                final RenderBox? renderBox = renderObject is RenderBox
+                    ? renderObject
+                    : null;
+                final Offset tapOffset = renderBox != null
+                    ? renderBox.globalToLocal(
+                        (context.findRenderObject() as RenderBox)
+                            .localToGlobal(localPosition),
+                      )
+                    : localPosition;
                 for (final hit in hits) {
-                  if (hit.contains(index)) {
+                  final List<TextBox> boxes;
+                  if (renderObject is RenderParagraph) {
+                    boxes = renderObject.getBoxesForSelection(
+                      TextSelection(
+                        baseOffset: hit.start,
+                        extentOffset: hit.end,
+                      ),
+                    );
+                  } else {
+                    boxes = const <TextBox>[];
+                  }
+                  if (boxes.isEmpty) {
+                    final defaultStyle = DefaultTextStyle.of(context);
+                    final painter = TextPainter(
+                      text: TextSpan(style: baseStyle, children: painterSpans),
+                      textAlign: defaultStyle.textAlign ?? TextAlign.start,
+                      textDirection: Directionality.of(context),
+                      textScaler: MediaQuery.textScalerOf(context),
+                      locale: Localizations.maybeLocaleOf(context),
+                      textWidthBasis: TextWidthBasis.parent,
+                    )..layout(maxWidth: constraints.maxWidth);
+                    final fallbackBoxes = painter.getBoxesForSelection(
+                      TextSelection(
+                        baseOffset: hit.start,
+                        extentOffset: hit.end,
+                      ),
+                    );
+                    if (fallbackBoxes.any(
+                      (box) => box.toRect().contains(tapOffset),
+                    )) {
+                      widget.onWordTap(hit.word, hit.tokenId);
+                      return;
+                    }
+                    continue;
+                  }
+                  if (boxes.any((box) => box.toRect().contains(tapOffset))) {
                     widget.onWordTap(hit.word, hit.tokenId);
-                    break;
+                    return;
                   }
                 }
               }
@@ -698,6 +740,7 @@ class _ParagraphViewState extends State<_ParagraphView> {
                   handleTap(event.localPosition);
                 },
                 child: SelectableText.rich(
+                  key: _textKey,
                   TextSpan(
                     style: baseStyle,
                     children: spans,
