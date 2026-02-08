@@ -1,23 +1,20 @@
 # Read English (Flutter, Android-first)
 
-A lightweight English reading app for Android built with Flutter.
+A lightweight English reading app built with Flutter. It focuses on short articles, word lookup, vocabulary building, and AI-generated readings with Chinese translations.
 
-## Implemented MVP Scope
+## Features
 
-- Local article library from JSON assets.
-- Reader page with paragraph rendering.
+- Local article library from JSON assets (with Chinese translations).
+- Reader with paragraph-based rendering and reading progress restore.
+- Word lookup: tap any word to see Chinese translation + English definition.
+- Save/remove words to a vocabulary notebook.
+- Article generation via DeepSeek/OpenAI-compatible API.
 - Reader settings:
   - Font scale
   - Line height
-  - Light/Dark mode
-- Tap any English word to open a definition sheet (local mock dictionary).
-- Save/remove words to a vocabulary notebook.
-- Cloud TTS read-aloud for English articles (OpenAI-compatible audio API).
-- Persisted local data:
-  - Reading progress per article
-  - Vocabulary words
-  - Reader settings
-- Generate articles via API (DeepSeek/OpenAI-compatible) with Chinese translations.
+  - Dark mode
+  - Default translation display on open
+- Long-press text selection for system actions (copy/share).
 
 ## Tech Stack
 
@@ -25,9 +22,8 @@ A lightweight English reading app for Android built with Flutter.
 - State management: `flutter_riverpod`
 - Routing: `go_router`
 - Local persistence: `hive` + `shared_preferences`
-- Networking (reserved for future dictionary API): `dio`
-- Text generation: `dio` + API settings (DeepSeek/OpenAI-compatible)
-- Audio playback: `just_audio`
+- Secure storage: `flutter_secure_storage` (API key)
+- Networking: `dio`
 
 ## Project Structure
 
@@ -40,7 +36,7 @@ A lightweight English reading app for Android built with Flutter.
 - `assets/articles/articles.json`: local article source
 - Generated articles stored locally in Hive (`generated_articles`)
 
-## Run for Android
+## Quick Start
 
 ```bash
 flutter pub get
@@ -54,37 +50,44 @@ flutter build apk --release
 flutter build appbundle --release
 ```
 
-## Android Release Notes
+## Configuration
 
-Current release build uses debug signing by default.
-Before production release:
-
-1. Create/upload a keystore.
-2. Configure `android/key.properties` and Gradle signing config.
-3. Replace launcher icons and app metadata.
-4. Test release build on physical devices.
-
-## Data Model Notes
-
-- Articles are static assets in `assets/articles/articles.json`.
-- Reading progress and vocabulary are stored in Hive boxes:
-  - `reader_progress`
-  - `reader_vocabulary`
-- Generated articles are stored in Hive:
-  - `generated_articles`
-- Reader visual settings are stored in SharedPreferences.
-- API settings for generation are stored in SharedPreferences (base URL, model, key).
-- Cloud TTS settings are stored in SharedPreferences (base URL, model, voice, key).
-
-## Article Generation (DeepSeek / OpenAI-compatible)
+### Article Generation (DeepSeek / OpenAI-compatible)
 
 - Open the Library page and tap the sparkle icon to open **Generate Article**.
 - Provide a topic, level, and paragraph count.
-- Expand **API Settings** and paste your API key.
-- The app will save the generated article locally and open it in the reader.
+- Expand **API Settings** and fill in:
+  - Base URL (default: `https://api.deepseek.com/chat/completions`)
+  - Model (default: `deepseek-chat`)
+  - API key (stored in secure storage)
 
-## Cloud TTS Read-Aloud
+### Word Lookup / Translation
 
-- Open any article, tap the speaker icon to play or stop read-aloud.
-- Tap the voice settings icon in Reader to configure cloud TTS endpoint/model/voice/key.
-- Default endpoint is OpenAI-compatible: `https://api.openai.com/v1/audio/speech`.
+- Tap any English word in the reader to open the lookup sheet.
+- The app uses:
+  - Dictionary definitions: `dictionaryapi.dev`
+  - Chinese translation: `MyMemory` API
+- If offline or API fails, it falls back to the local mock dictionary.
+
+## Data & Storage
+
+- Articles (assets): `assets/articles/articles.json`
+- Generated articles: Hive box `generated_articles`
+- Reading progress: Hive box `reader_progress`
+- Vocabulary list: Hive box `reader_vocabulary`
+- Reader settings: `SharedPreferences`
+- Generation API key: `flutter_secure_storage`
+
+## Privacy Notes
+
+- Article generation sends your input to a third-party AI service.
+- Word lookup may call public dictionary/translation APIs.
+- All saved data (articles, vocabulary, progress) stays on device.
+
+## Contributing
+
+Issues and PRs are welcome. Keep changes focused, and run `flutter analyze` before submitting.
+
+## License
+
+See `LICENSE`.
