@@ -5,9 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:read_english/data/models/generation_settings.dart';
-import 'package:read_english/data/models/privacy_settings.dart';
 import 'package:read_english/features/library/library_providers.dart';
-import 'package:read_english/features/privacy/privacy_providers.dart';
 import 'generate_providers.dart';
 
 class GenerateArticlePage extends ConsumerStatefulWidget {
@@ -49,8 +47,6 @@ class _GenerateArticlePageState extends ConsumerState<GenerateArticlePage> {
     final settingsAsync = ref.watch(generationSettingsControllerProvider);
     final generationState = ref.watch(generationControllerProvider);
     final isLoading = generationState.isLoading;
-    final privacySettings =
-        ref.watch(privacySettingsControllerProvider).asData?.value;
 
     if (!_initialized && settingsAsync.hasValue) {
       // 首次进入页面时回填已保存的 API 配置，避免用户重复输入。
@@ -151,22 +147,6 @@ class _GenerateArticlePageState extends ConsumerState<GenerateArticlePage> {
                 });
               },
             ),
-            const SizedBox(height: 12),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: privacySettings?.allowOnlineGeneration ??
-                  PrivacySettings.defaults.allowOnlineGeneration,
-              onChanged: (value) {
-                ref
-                    .read(privacySettingsControllerProvider.notifier)
-                    .setAllowOnlineGeneration(value);
-              },
-              title: const Text('Allow online generation'),
-              subtitle: const Text(
-                'Your input will be sent to a third-party AI service.',
-              ),
-            ),
-            const SizedBox(height: 8),
             ExpansionTile(
               title: const Text('API Settings'),
               childrenPadding: const EdgeInsets.fromLTRB(0, 0, 0, 12),
@@ -226,13 +206,6 @@ class _GenerateArticlePageState extends ConsumerState<GenerateArticlePage> {
   }
 
   Future<void> _handleGenerate() async {
-    final privacy =
-        ref.read(privacySettingsControllerProvider).asData?.value ??
-            PrivacySettings.defaults;
-    if (!privacy.allowOnlineGeneration) {
-      _showMessage('Online generation is disabled in privacy settings.');
-      return;
-    }
     final topic = _topicController.text.trim();
     if (topic.isEmpty && !_useAiRandomTopic) {
       _showMessage('Please enter a topic.');
